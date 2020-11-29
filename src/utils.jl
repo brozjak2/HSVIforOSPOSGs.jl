@@ -56,3 +56,7 @@ function selectAOPair(game, belief, policy1, policy2, rho)
 
     return a1, o
 end
+
+function LBvalue(game, belief)
+    return maximum(sum(alpha .* belief) for alpha in eachrow(game.gamma))
+end

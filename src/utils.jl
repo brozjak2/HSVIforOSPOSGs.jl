@@ -22,31 +22,33 @@ end
     Compute rho(t + 1) given rho(t)
     rho(0) = epsilon
 """
-function nextRho(prevRho, game, D)
-    return (prevRho - 2 * game.lipschitzdelta * D) / game.disc
+function nextRho(prevRho, gameData, D)
+    return (prevRho - 2 * gameData.lipschitzdelta * D) / gameData.disc
 end
 
 """
     Excess of the gap between V_LB(belief) and V_UB(belief) after substracting rho(t)
 """
-function excess(game, belief, rho)
-    return UBvalue(game, belief) - LBvalue(game, belief) - rho
+function excess(gameData, belief, rho)
+    return UBvalue(gameData, belief) - LBvalue(gameData, belief) - rho
 end
 
-function weightedExcess(game, belief, policy1, policy2, a1, o, rho)
+function weightedExcess(gameData, belief, policy1, policy2, a1, o, rho)
+    game = gameData.game
     updatedBelief = beliefUpdate(game, belief, policy1, policy2, a1, o)
 
     return (A1OPairProbability(game, belief, policy1, policy2, a1, o)
-           * excess(game, updatedBelief, rho))
+           * excess(gameData, updatedBelief, rho))
 end
 
 """
     Select optimal (player 1 action, observation) pair according to maximal
     weighted excess gap heuristic
 """
-function selectAOPair(game, belief, policy1, policy2, rho)
+function selectAOPair(gameData, belief, policy1, policy2, rho)
+    game = gameData.game
     weightedExcessGaps = [
-        [weightedExcess(game, belief, policy1, policy2, a1, o, rho)
+        [weightedExcess(gameData, belief, policy1, policy2, a1, o, rho)
          for o in game.observations]
         for a1 in game.actions1]
 
@@ -57,6 +59,6 @@ function selectAOPair(game, belief, policy1, policy2, rho)
     return a1, o
 end
 
-function LBvalue(game, belief)
-    return maximum(sum(alpha .* belief) for alpha in eachrow(game.gamma))
+function LBvalue(gameData, belief)
+    return maximum(sum(alpha .* belief) for alpha in eachrow(gameData.gamma))
 end

@@ -1,8 +1,9 @@
 using JuMP
 using Gurobi
 
-function computeLBprimal(game, belief)
-    gammarange = 1:size(game.gamma, 1)
+function computeLBprimal(gameData, belief)
+    game = gameData.game
+    gammarange = 1:size(gameData.gamma, 1)
     LBprimal = JuMP.Model(Gurobi.Optimizer)
     JuMP.set_optimizer_attribute(LBprimal, "OutputFlag", 0)
 
@@ -17,12 +18,12 @@ function computeLBprimal(game, belief)
     # 27b
     @constraint(LBprimal, con27b[s=game.states, a2=game.actions2],
         statevalue[s] <= sum(policy1[a1] * game.reward[s, a1, a2] for a1 in game.actions1)
-                         + game.disc * sum(game.transition(s, a1, a2, o, sp) * alphavec[a1, o, sp]
+                         + gameData.disc * sum(game.transition(s, a1, a2, o, sp) * alphavec[a1, o, sp]
                                            for a1 in game.actions1 for o in game.observations for sp in game.states))
 
     # 27c
     @constraint(LBprimal, con27c[a1=game.actions1, o=game.observations, sp=game.states],
-           alphavec[a1, o, sp] == sum(lambda[a1, o, i] * game.gamma[i, sp] for i in gammarange))
+           alphavec[a1, o, sp] == sum(lambda[a1, o, i] * gameData.gamma[i, sp] for i in gammarange))
 
     # 27d
     @constraint(LBprimal, con27d[a1=game.actions1, o=game.observations],
@@ -41,8 +42,9 @@ function computeLBprimal(game, belief)
     return value.(LBprimal[:policy1]).data, policy2conditional, value.(LBprimal[:statevalue]).data
 end
 
-function computeUBdual(game, belief)
-    upsilonrange = 1:size(game.upsilon, 1)
+function computeUBdual(gameData, belief)
+    game = gameData.game
+    upsilonrange = 1:size(gameData.upsilon, 1)
     UBdual = JuMP.Model(Gurobi.Optimizer)
     JuMP.set_optimizer_attribute(UBdual, "OutputFlag", 0)
 
@@ -60,7 +62,7 @@ function computeUBdual(game, belief)
     # 28b
     @constraint(UBdual, con28b[a1=game.actions1],
         gamevalue >= sum(policy2[s, a2] * game.reward[s, a1, a2] for s in game.states for a2 in game.actions2)
-                     + game.disc * sum(subgamevalue[a1, o] for o in game.observations))
+                     + gameData.disc * sum(subgamevalue[a1, o] for o in game.observations))
 
     # 28d
     @constraint(UBdual, con28d[a1=game.actions1, o=game.observations, sp=game.states],
@@ -73,12 +75,12 @@ function computeUBdual(game, belief)
 
     # 36a
     @constraint(UBdual, con36a[a1=game.actions1, o=game.observations],
-        subgamevalue[a1, o] == sum(lambda[a1, o, i] * game.upsilon[i][2] for i in upsilonrange)
-                               + game.lipschitzdelta * sum(delta[a1, o, sp] for sp in game.states))
+        subgamevalue[a1, o] == sum(lambda[a1, o, i] * gameData.upsilon[i][2] for i in upsilonrange)
+                               + gameData.lipschitzdelta * sum(delta[a1, o, sp] for sp in game.states))
 
     # 36b
     @constraint(UBdual, con36b[a1=game.actions1, o=game.observations, sp=game.states],
-        sum(lambda[a1, o, i] * game.upsilon[i][1][sp] for i in upsilonrange) == beliefp[a1, o, sp])
+        sum(lambda[a1, o, i] * gameData.upsilon[i][1][sp] for i in upsilonrange) == beliefp[a1, o, sp])
 
     # 36c
     @constraint(UBdual, con36c[a1=game.actions1, o=game.observations, sp=game.states],
@@ -101,8 +103,9 @@ function computeUBdual(game, belief)
     return dual.(UBdual[:con28b]).data, policy2conditional, value(UBdual[:gamevalue])
 end
 
-function UBvalue(game, belief)
-    upsilonrange = 1:size(game.upsilon, 1)
+function UBvalue(gameData, belief)
+    game = gameData.game
+    upsilonrange = 1:size(gameData.upsilon, 1)
     UBvalueLP = JuMP.Model(Gurobi.Optimizer)
     JuMP.set_optimizer_attribute(UBvalueLP, "OutputFlag", 0)
 
@@ -111,12 +114,12 @@ function UBvalue(game, belief)
     @variable(UBvalueLP, beliefp[game.states])
 
     # 33a
-    @objective(UBvalueLP, Min, sum(lambda[i] * game.upsilon[i][2] for i in upsilonrange)
-                               + game.lipschitzdelta * sum(delta[sp] for sp in game.states))
+    @objective(UBvalueLP, Min, sum(lambda[i] * gameData.upsilon[i][2] for i in upsilonrange)
+                               + gameData.lipschitzdelta * sum(delta[sp] for sp in game.states))
 
     # 33b
     @constraint(UBvalueLP, con33b[s=game.states],
-        sum(lambda[i] * game.upsilon[i][1][s] for i in upsilonrange) == beliefp[s])
+        sum(lambda[i] * gameData.upsilon[i][1][s] for i in upsilonrange) == beliefp[s])
 
     # 33c
     @constraint(UBvalueLP, con33c[s=game.states],

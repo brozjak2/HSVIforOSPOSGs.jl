@@ -1,15 +1,10 @@
-mutable struct Game
+struct Game
     states
     actions1
     actions2
     observations
     reward
     transition
-    gamma
-    upsilon
-    b0
-    disc
-    lipschitzdelta
 end
 
 function transition(s, a1, a2, o, sp)
@@ -45,15 +40,6 @@ nactions1 = 2
 nactions2 = 2
 nobservations = 4
 reward = cat([0. 0.; 0. 0.; 0. 0.; 1. 3.], [0. 0.; 0. 0.; 0. 0.; 4. 3.], dims=3)
-minr = minimum(reward)
-maxr = maximum(reward)
-gamma = repeat([minr], 1, 4)
-upsilon = [([1.; 0.; 0.; 0.], maxr); ([0.; 1.; 0.; 0.], maxr); ([0.; 0.; 1.; 0.], maxr); ([0.; 0.; 0.; 1.], maxr)]
-b0 = [.25; 0.25; 0.25; .25]
-disc = 0.9
-L = minr / (1 - disc)
-U = maxr / (1 - disc)
-lipschitzdelta = (U - L) / 2
 
 game = Game(1:nstates, 1:nactions1, 1:nactions2, 1:nobservations,
-            reward, transition, gamma, upsilon, b0, disc, lipschitzdelta)
+            reward, transition)

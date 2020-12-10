@@ -3,7 +3,7 @@ using Gurobi
 
 function computeLBprimal(gameData, belief)
     game = gameData.game
-    gammarange = 1:size(gameData.gamma, 1)
+    gammarange = 1:size(gameData.gamma, 2)
     LBprimal = JuMP.Model(Gurobi.Optimizer)
     JuMP.set_optimizer_attribute(LBprimal, "OutputFlag", 0)
 
@@ -23,7 +23,7 @@ function computeLBprimal(gameData, belief)
 
     # 27c
     @constraint(LBprimal, con27c[a1=game.actions1, o=game.observations, sp=game.states],
-           alphavec[a1, o, sp] == sum(lambda[a1, o, i] * gameData.gamma[i, sp] for i in gammarange))
+           alphavec[a1, o, sp] == sum(lambda[a1, o, i] * gameData.gamma[i][sp] for i in gammarange))
 
     # 27d
     @constraint(LBprimal, con27d[a1=game.actions1, o=game.observations],

@@ -1,3 +1,33 @@
+function initGameData(game, disc, epsilon, D)
+    minr = minimum(game.reward)
+    maxr = maximum(game.reward)
+    L = minr / (1 - disc)
+    U = maxr / (1 - disc)
+    lipschitzdelta = (U - L) / 2
+
+    @assert 0 < D < (1 - disc) * epsilon / (2 * lipschitzdelta) @sprintf(
+        "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
+        D, 0, (1 - disc) * epsilon / (2 * lipschitzdelta))
+
+    gamma, upsilon = initBounds(game, L, U)
+    gameData = GameData(game, disc, lipschitzdelta, gamma, upsilon)
+
+    return gameData
+end
+
+function initBounds(game, L, U)
+    n = length(game.states)
+    gamma = [repeat([L], n)]
+    upsilon = [(row, U) for row in eachrow(Matrix{Float64}(I, n, n))]
+
+    return gamma, upsilon
+end
+
+function pointBasedUpdate(gameData, alpha, belief, y)
+    append!(gameData.gamma, [alpha])
+    append!(gameData.upsilon, [(belief, y)])
+end
+
 function transitionProbability(game, belief, policy1, policy2, s, a1, a2, o, sp)
     return belief[s] * policy1[a1] * policy2[s, a2] * game.transition(s, a1, a2, o, sp)
 end
@@ -47,10 +77,8 @@ end
 """
 function selectAOPair(gameData, belief, policy1, policy2, rho)
     game = gameData.game
-    weightedExcessGaps = [
-        [weightedExcess(gameData, belief, policy1, policy2, a1, o, rho)
-         for o in game.observations]
-        for a1 in game.actions1]
+    weightedExcessGaps = [weightedExcess(gameData, belief, policy1, policy2, a1, o, rho)
+        for a1 in game.actions1, o in game.observations]
 
     _, indices = findmax(weightedExcessGaps)
     a1 = indices[1]
@@ -60,5 +88,5 @@ function selectAOPair(gameData, belief, policy1, policy2, rho)
 end
 
 function LBvalue(gameData, belief)
-    return maximum(sum(alpha .* belief) for alpha in eachrow(gameData.gamma))
+    return maximum(sum(alpha .* belief) for alpha in gameData.gamma)
 end

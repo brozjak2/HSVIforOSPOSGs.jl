@@ -1,7 +1,7 @@
 module HSVIforOneSidedPOSGs
 
 using Printf
-using LinearAlgebra: I
+using LinearAlgebra: I # TODO: remove when bound initialization is changed
 using JuMP
 using Gurobi
 

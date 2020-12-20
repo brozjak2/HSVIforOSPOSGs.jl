@@ -1,9 +1,15 @@
 using Printf
 using LinearAlgebra
 
+const GUROBI_ENV = Gurobi.Env()
+
+##
+
 include("gameDefinition.jl")
 include("linearPrograms.jl")
 include("utils.jl")
+
+##
 
 mutable struct GameData
     game::Game
@@ -45,7 +51,6 @@ end
 
 ##
 
-# initBelief = [.25; 0.25; 0.25; .25]
 initBelief = [0; 0; 0; 1.]
 disc = 0.9
 epsilon = 0.1
@@ -53,4 +58,4 @@ D = 0.0001
 
 ##
 
-gameData = main(game, initBelief, disc, epsilon, D)
+gameData = @time main(game, initBelief, disc, epsilon, D)

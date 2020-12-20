@@ -1,15 +1,21 @@
+module HSVIforOneSidedPOSGs
+
 using Printf
-using LinearAlgebra
+using LinearAlgebra: I
+using JuMP
+using Gurobi
 
-const GUROBI_ENV = Gurobi.Env()
-
-##
+export solve, getGame, initGameData
 
 include("gameDefinition.jl")
 include("linearPrograms.jl")
 include("utils.jl")
 
-##
+const global GRB_ENV = Ref{Gurobi.Env}()
+
+function __init__()
+    GRB_ENV[] = Gurobi.Env()
+end
 
 mutable struct GameData
     game::Game
@@ -19,7 +25,7 @@ mutable struct GameData
     upsilon::Array{Tuple{Array{Float64,1},Float64},1}
 end
 
-function main(game, initBelief, disc, epsilon, D)
+function solve(game, initBelief, disc, epsilon, D)
     gameData = initGameData(game, disc, epsilon, D)
 
     while excess(gameData, initBelief, epsilon) > 0
@@ -49,13 +55,4 @@ function explore(gameData, belief, rho, D)
     return gameData
 end
 
-##
-
-initBelief = [0; 0; 0; 1.]
-disc = 0.9
-epsilon = 0.1
-D = 0.0001
-
-##
-
-gameData = @time main(game, initBelief, disc, epsilon, D)
+end

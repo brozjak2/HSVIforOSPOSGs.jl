@@ -35,11 +35,15 @@ function transition(s, a1, a2, o, sp)
     return 0
 end
 
-nstates = 4
-nactions1 = 2
-nactions2 = 2
-nobservations = 4
-reward = cat([0. 0.; 0. 0.; 0. 0.; 1. 3.], [0. 0.; 0. 0.; 0. 0.; 4. 3.], dims=3)
+function getGame()
+    nstates = 4
+    nactions1 = 2
+    nactions2 = 2
+    nobservations = 4
+    reward = cat([0. 0.; 0. 0.; 0. 0.; 1. 3.], [0. 0.; 0. 0.; 0. 0.; 4. 3.], dims=3)
 
-game = Game(1:nstates, 1:nactions1, 1:nactions2, 1:nobservations,
-            reward, transition)
+    game = Game(1:nstates, 1:nactions1, 1:nactions2, 1:nobservations,
+                reward, transition)
+
+    return game
+end

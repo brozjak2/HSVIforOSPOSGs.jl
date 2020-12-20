@@ -3,6 +3,12 @@ uuid = "28136be4-687d-4786-8c85-223b052e0651"
 authors = ["Jakub Brož <brozjak2@fel.cvut.cz>"]
 version = "0.1.0"
 
+[deps]
+Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
 [compat]
 julia = "1.8"
 

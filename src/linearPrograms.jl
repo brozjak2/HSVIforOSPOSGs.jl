@@ -1,10 +1,7 @@
-using JuMP
-using Gurobi
-
 function computeLBprimal(gameData, belief)
     game = gameData.game
     gammarange = 1:size(gameData.gamma, 2)
-    LBprimal = JuMP.Model(() -> Gurobi.Optimizer(GUROBI_ENV))
+    LBprimal = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(LBprimal, "OutputFlag", 0)
 
     @variable(LBprimal, policy1[game.actions1] >= 0) # 27f
@@ -45,7 +42,7 @@ end
 function computeUBdual(gameData, belief)
     game = gameData.game
     upsilonrange = 1:size(gameData.upsilon, 1)
-    UBdual = JuMP.Model(() -> Gurobi.Optimizer(GUROBI_ENV))
+    UBdual = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(UBdual, "OutputFlag", 0)
 
     @variable(UBdual, gamevalue)
@@ -106,7 +103,7 @@ end
 function UBvalue(gameData, belief)
     game = gameData.game
     upsilonrange = 1:size(gameData.upsilon, 1)
-    UBvalueLP = JuMP.Model(() -> Gurobi.Optimizer(GUROBI_ENV))
+    UBvalueLP = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(UBvalueLP, "OutputFlag", 0)
 
     @variable(UBvalueLP, lambda[upsilonrange] >= 0) # 33f

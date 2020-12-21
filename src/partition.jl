@@ -11,8 +11,8 @@ struct Partition
 end
 
 function initBounds(partition::Partition, game)
-    L = L(game)
-    U = U(game)
+    L = Lmin(game)
+    U = Umax(game)
     n = length(partition.states)
 
     append!(partition.gamma, [repeat([L], n)])

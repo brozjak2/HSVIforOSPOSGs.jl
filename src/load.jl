@@ -1,4 +1,6 @@
 function load(gameFilePath::String)
+    game, initPartition, initBelief = Nothing, Nothing, Nothing
+
     open(gameFilePath, "r") do file
         parameters = split(readline(file), ' ')
 
@@ -25,8 +27,8 @@ function load(gameFilePath::String)
                 Array{Int64,1}(undef, 0),
                 Array{Int64,1}(undef, 0),
                 Dict{Int64,Array{Int64,1}}([]),
-                gamma::Array{Array{Float64,1},1}(undef, 0),
-                upsilon::Array{Tuple{Array{Float64,1},Float64},1}(undef, 0)
+                Array{Array{Float64,1},1}(undef, 0),
+                Array{Tuple{Array{Float64,1},Float64},1}(undef, 0)
             )
         end
 

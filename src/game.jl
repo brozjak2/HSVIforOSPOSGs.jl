@@ -21,9 +21,9 @@ struct Game
     maxReward::Float64
 end
 
-L(game::Game) = game.minReward / (1 - game.disc)
-U(game::Game) = game.maxReward / (1 - game.disc)
-lipschitzdelta(game::Game) = (U(game) - L(game)) / 2
+Lmin(game::Game) = game.minReward / (1 - game.disc)
+Umax(game::Game) = game.maxReward / (1 - game.disc)
+lipschitzdelta(game::Game) = (Umax(game) - Lmin(game)) / 2
 
 function initBounds(game::Game)
     for i = 1:game.nPartitions

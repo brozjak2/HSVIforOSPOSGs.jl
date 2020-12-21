@@ -9,6 +9,7 @@ export main
 include("state.jl")
 include("partition.jl")
 include("game.jl")
+include("load.jl")
 include("linearPrograms.jl")
 include("utils.jl")
 
@@ -64,7 +65,6 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("nObservations: $(game.nObservations)")
     println("nTransitions: $(game.nTransitions)")
     println("nRewards: $(game.nRewards)")
-    println("lipschitzdelta: $ldelta")
     println("minReward: $(game.minReward)")
     println("maxReward: $(game.maxReward)")
     println("LB: $(game.minReward / (1 - game.disc))")
@@ -75,5 +75,7 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("initPartition: $initPartition")
     println("initBelief: $initBelief")
 
-    solve(game, initPartition, initBelief, epsilon, D)
+    # solve(game, initPartition, initBelief, epsilon, D)
+end
+
 end

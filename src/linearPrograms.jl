@@ -1,3 +1,5 @@
+# TODO: adjust to handle partitions
+
 function computeLBprimal(gameData, belief)
     game = gameData.game
     gammarange = 1:size(gameData.gamma, 2)

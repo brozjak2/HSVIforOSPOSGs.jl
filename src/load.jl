@@ -24,8 +24,11 @@ function load(gameFilePath::String)
                 i,
                 Array{Int64,1}(undef, 0),
                 Array{Int64,1}(undef, 0),
-                Dict{Int64,Array{Int64,1}}([]))
-            end
+                Dict{Int64,Array{Int64,1}}([]),
+                gamma::Array{Array{Float64,1},1}(undef, 0),
+                upsilon::Array{Tuple{Array{Float64,1},Float64},1}(undef, 0)
+            )
+        end
 
         for i = 1:nStates
             name = readuntil(file, ' ')
@@ -75,85 +78,15 @@ function load(gameFilePath::String)
         initPartition = parse(Int64, readuntil(file, ' ')) + 1
         initBelief = [parse(Float64, x) for x in split(readline(file), ' ')]
 
-        # println("nStates: $nStates")
-        # println("nPartitions: $nPartitions")
-        # println("nLeaderActions: $nLeaderActions")
-        # println("nFollowerActions: $nFollowerActions")
-        # println("nObservations: $nObservations")
-        # println("nTransitions: $nTransitions")
-        # println("nRewards: $nRewards")
-        # println("disc: $disc")
-        # println("---------- States ----------")
-        #
-        # for i = 1:nStates
-        #     println("$(states[i].index): State $(states[i].name) belongs to partition num. $(states[i].partition)")
-        #     for j = 1:length(states[i].followerActions)
-        #         a = states[i].followerActions[j]
-        #         println("\t$a: Action $(followerActions[a])")
-        #     end
-        # end
-        #
-        # println("---------- Partitions ----------")
-        #
-        # for i = 1:nPartitions
-        #     println("$(partitions[i].index): Partition")
-        #     println("\tStates:")
-        #     for j = 1:length(partitions[i].states)
-        #         s = partitions[i].states[j]
-        #         println("\t\t$s: State $(states[s].name)")
-        #     end
-        #     println("\tActions:")
-        #     for j = 1:length(partitions[i].leaderActions)
-        #         a = partitions[i].leaderActions[j]
-        #         println("\t\t$a: Action $(leaderActions[a])")
-        #     end
-        # end
-        #
-        # println("---------- Leader actions ----------")
-        #
-        # for i = 1:nLeaderActions
-        #     println("$i: Leader action $(leaderActions[i])")
-        # end
-        #
-        # println("---------- Follower actions ----------")
-        #
-        # for i = 1:nFollowerActions
-        #     println("$i: Follower action $(followerActions[i])")
-        # end
-        #
-        # println("---------- Observations ----------")
-        #
-        # for i = 1:nObservations
-        #     println("$i: Observation $(observations[i])")
-        # end
-        #
-        # println("---------- Transitions ----------")
-        #
-        # for i = 1:nTransitions
-        #     println(@sprintf("Trasition from %d to %d by %d and %d observing %d with probability %.2f",
-        #         transitions[i][1],
-        #         transitions[i][5],
-        #         transitions[i][2],
-        #         transitions[i][3],
-        #         transitions[i][4],
-        #         transitions[i][6]))
-        # end
-        #
-        # println("---------- Rewards ----------")
-        #
-        # for i = 1:nRewards
-        #     println(@sprintf("Reward for %d and %d in %d is %.2f",
-        #         rewards[i][2],
-        #         rewards[i][3],
-        #         rewards[i][1],
-        #         rewards[i][4]))
-        # end
-        #
-        # println("---------- Init ----------")
-        #
-        # println("Starting in partition $initPartition with belief:")
-        # for i = 1:length(initBelief)
-        #     println("\t$(partitions[initPartition].states[i]): $(initBelief[i])")
-        # end
+        minReward = minimum([r[4] for r in rewards])
+        maxReward = maximum([r[4] for r in rewards])
+
+        game = Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
+                    nObservations, nTransitions, nRewards, disc,
+                    states, leaderActions, followerActions, observations,
+                    transitions, rewards, partitions,
+                    minReward, maxReward)
     end
+
+    return game, initPartition, initBelief
 end

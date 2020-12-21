@@ -1,13 +1,14 @@
 module HSVIforOneSidedPOSGs
 
 using Printf
-using LinearAlgebra: I # TODO: remove when bound initialization is changed
 using JuMP
 using Gurobi
 
-export solve, getGame, initGameData
+export main
 
-include("gameDefinition.jl")
+include("state.jl")
+include("partition.jl")
+include("game.jl")
 include("linearPrograms.jl")
 include("utils.jl")
 
@@ -17,18 +18,9 @@ function __init__()
     GRB_ENV[] = Gurobi.Env()
 end
 
-mutable struct GameData
-    game::Game
-    disc::Float64
-    lipschitzdelta::Float64
-    gamma::Array{Array{Float64,1},1}
-    upsilon::Array{Tuple{Array{Float64,1},Float64},1}
-end
-
-function solve(game, initBelief, disc, epsilon, D)
-    gameData = initGameData(game, disc, epsilon, D)
-
+function solve(game, initPartition, initBelief, epsilon, D)
     while excess(gameData, initBelief, epsilon) > 0
+        # TODO: print progress
         explore(gameData, initBelief, epsilon, D)
     end
 
@@ -55,4 +47,33 @@ function explore(gameData, belief, rho, D)
     return gameData
 end
 
+function main(gameFilePath::String, epsilon::Float64, D::Float64)
+    game, initPartition, initBelief = load(gameFilePath)
+
+    @assert 0 < D < (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)) @sprintf(
+        "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
+        D, 0, (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)))
+
+    # TODO: replace with presolveLB and presolveUB
+    initBounds(game)
+
+    println("nStates: $(game.nStates)")
+    println("nPartitions: $(game.nPartitions)")
+    println("nLeaderActions: $(game.nLeaderActions)")
+    println("nFollowerActions: $(game.nFollowerActions)")
+    println("nObservations: $(game.nObservations)")
+    println("nTransitions: $(game.nTransitions)")
+    println("nRewards: $(game.nRewards)")
+    println("lipschitzdelta: $ldelta")
+    println("minReward: $(game.minReward)")
+    println("maxReward: $(game.maxReward)")
+    println("LB: $(game.minReward / (1 - game.disc))")
+    println("UB: $(game.maxReward / (1 - game.disc))")
+    println("lipschitzdelta: $(lipschitzdelta(game))")
+    println("D: $D")
+    println("epsilon: $epsilon")
+    println("initPartition: $initPartition")
+    println("initBelief: $initBelief")
+
+    solve(game, initPartition, initBelief, epsilon, D)
 end

@@ -1,27 +1,4 @@
-function initGameData(game, disc, epsilon, D)
-    minr = minimum(game.reward)
-    maxr = maximum(game.reward)
-    L = minr / (1 - disc)
-    U = maxr / (1 - disc)
-    lipschitzdelta = (U - L) / 2
-
-    @assert 0 < D < (1 - disc) * epsilon / (2 * lipschitzdelta) @sprintf(
-        "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
-        D, 0, (1 - disc) * epsilon / (2 * lipschitzdelta))
-
-    gamma, upsilon = initBounds(game, L, U)
-    gameData = GameData(game, disc, lipschitzdelta, gamma, upsilon)
-
-    return gameData
-end
-
-function initBounds(game, L, U)
-    n = length(game.states)
-    gamma = [repeat([L], n)]
-    upsilon = [(row, U) for row in eachrow(Matrix{Float64}(I, n, n))]
-
-    return gamma, upsilon
-end
+# TODO: adjust to handle partitions
 
 function pointBasedUpdate(gameData, alpha, belief, y)
     append!(gameData.gamma, [alpha])

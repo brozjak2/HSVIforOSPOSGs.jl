@@ -77,7 +77,8 @@ function load(gameFilePath::String)
             rewards[i] = (parsedInts..., reward)
         end
 
-        initPartition = parse(Int64, readuntil(file, ' ')) + 1
+        initPartitionIndex = parse(Int64, readuntil(file, ' ')) + 1
+        initPartition = partitions[initPartitionIndex]
         initBelief = [parse(Float64, x) for x in split(readline(file), ' ')]
 
         minReward = minimum([r[4] for r in rewards])

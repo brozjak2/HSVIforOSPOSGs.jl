@@ -1,10 +1,5 @@
 # TODO: adjust to handle partitions
 
-function pointBasedUpdate(gameData, alpha, belief, y)
-    append!(gameData.gamma, [alpha])
-    append!(gameData.upsilon, [(belief, y)])
-end
-
 function transitionProbability(game, belief, policy1, policy2, s, a1, a2, o, sp)
     return belief[s] * policy1[a1] * policy2[s, a2] * game.transition(s, a1, a2, o, sp)
 end
@@ -29,15 +24,15 @@ end
     Compute rho(t + 1) given rho(t)
     rho(0) = epsilon
 """
-function nextRho(prevRho, gameData, D)
-    return (prevRho - 2 * gameData.lipschitzdelta * D) / gameData.disc
+function nextRho(prevRho, game, D)
+    return (prevRho - 2 * lipschitzdelta(game) * D) / game.disc
 end
 
 """
     Excess of the gap between V_LB(belief) and V_UB(belief) after substracting rho(t)
 """
-function excess(gameData, belief, rho)
-    return UBvalue(gameData, belief) - LBvalue(gameData, belief) - rho
+function excess(game::Game, partition::Partition, belief::Array{Float64,1}, rho::Float64)
+    return width(game, partition, belief) - rho
 end
 
 function weightedExcess(gameData, belief, policy1, policy2, a1, o, rho)
@@ -62,8 +57,4 @@ function selectAOPair(gameData, belief, policy1, policy2, rho)
     o = indices[2]
 
     return a1, o
-end
-
-function LBvalue(gameData, belief)
-    return maximum(sum(alpha .* belief) for alpha in gameData.gamma)
 end

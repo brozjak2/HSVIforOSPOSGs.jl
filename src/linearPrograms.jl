@@ -101,38 +101,3 @@ function computeUBdual(gameData, belief)
 
     return dual.(UBdual[:con28b]).data, policy2conditional, value(UBdual[:gamevalue])
 end
-
-function UBvalue(gameData, belief)
-    game = gameData.game
-    upsilonrange = 1:size(gameData.upsilon, 1)
-    UBvalueLP = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
-    JuMP.set_optimizer_attribute(UBvalueLP, "OutputFlag", 0)
-
-    @variable(UBvalueLP, lambda[upsilonrange] >= 0) # 33f
-    @variable(UBvalueLP, delta[game.states])
-    @variable(UBvalueLP, beliefp[game.states])
-
-    # 33a
-    @objective(UBvalueLP, Min, sum(lambda[i] * gameData.upsilon[i][2] for i in upsilonrange)
-                               + gameData.lipschitzdelta * sum(delta[sp] for sp in game.states))
-
-    # 33b
-    @constraint(UBvalueLP, con33b[s=game.states],
-        sum(lambda[i] * gameData.upsilon[i][1][s] for i in upsilonrange) == beliefp[s])
-
-    # 33c
-    @constraint(UBvalueLP, con33c[s=game.states],
-        delta[s] >= beliefp[s] - belief[s])
-
-    # 33d
-    @constraint(UBvalueLP, con33d[s=game.states],
-        delta[s] >= belief[s] - beliefp[s])
-
-    # 33e
-    @constraint(UBvalueLP, con33e,
-        sum(lambda[i] for i in upsilonrange) == 1)
-
-    optimize!(UBvalueLP)
-
-    return objective_value(UBvalueLP)
-end

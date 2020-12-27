@@ -19,21 +19,34 @@ function __init__()
     GRB_ENV[] = Gurobi.Env()
 end
 
-function solve(game, initPartition, initBelief, epsilon, D)
-    while excess(gameData, initBelief, epsilon) > 0
-        # TODO: print progress
-        explore(gameData, initBelief, epsilon, D)
+function solve(game::Game, initPartition::Partition, initBelief::Array{Float64, 1}, epsilon::Float64, D::Float64, start::Float64
+    while excess(game, initPartition, initBelief, epsilon) > 0
+        globalAlphaCount = sum(length(p.gamma) for p in game.partitions)
+        globalUpsilonCount = sum(length(p.upsilon) for p in game.partitions
+
+        println(@sprintf(
+            "%3.5fs\t%+3.5f\t%+3.5f\t%+3.5f\t%4d\t%4d",
+            time() - start,
+            LBValue(initPartition, initBelief),
+            UBValue(game, initPartition, initBelief),
+            width(game, initPartition, initBelief),
+            globalAlphaCount,
+            globalUpsilonCount
+        ))
+
+        explore(game, initPartition, initBelief, epsilon, D)
     end
 
-    return gameData
+    return game
 end
 
-function explore(gameData, belief, rho, D)
+function explore(game, partition, belief, rho, D)
     _, policy2lb, alpha = computeLBprimal(gameData, belief)
     policy1ub, _, y = computeUBdual(gameData, belief)
 
-    pointBasedUpdate(gameData, alpha, belief, y)
+    pointBasedUpdate(partition, belief, alpha, y)
 
+    # NOTE: Rework ended here
     a1, o = selectAOPair(gameData, belief, policy1ub, policy2lb, rho)
 
     if weightedExcess(gameData, belief, policy1ub, policy2lb, a1, o, rho) > 0
@@ -49,14 +62,16 @@ function explore(gameData, belief, rho, D)
 end
 
 function main(gameFilePath::String, epsilon::Float64, D::Float64)
+    start = time()
     game, initPartition, initBelief = load(gameFilePath)
+    println(@sprintf("%3.5fs\tGame loaded...", time() - start))
 
     @assert 0 < D < (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)) @sprintf(
         "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
-        D, 0, (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)))
-
-    # TODO: replace with presolveLB and presolveUB
-    initBounds(game)
+        D,
+        0,
+        (1 - game.disc) * epsilon / (2 * lipschitzdelta(game))
+    )
 
     println("nStates: $(game.nStates)")
     println("nPartitions: $(game.nPartitions)")
@@ -72,10 +87,14 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("lipschitzdelta: $(lipschitzdelta(game))")
     println("D: $D")
     println("epsilon: $epsilon")
-    println("initPartition: $initPartition")
+    println("initPartition: $(initPartitionIndex.index)")
     println("initBelief: $initBelief")
 
-    # solve(game, initPartition, initBelief, epsilon, D)
+    # TODO: replace with presolveLB and presolveUB
+    initBounds(game)
+    println(@sprintf("%3.5fs\tBounds initialized...", time() - start))
+
+    solve(game, initPartition, initBelief, epsilon, D, start)
 end
 
 end

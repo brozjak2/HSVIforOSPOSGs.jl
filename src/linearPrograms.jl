@@ -1,103 +1,105 @@
-# TODO: adjust to handle partitions
+function computeLBprimal(partition::Partition, belief::Array{Float64,1})
+    game = partition.game
 
-function computeLBprimal(gameData, belief)
-    game = gameData.game
-    gammarange = 1:size(gameData.gamma, 2)
     LBprimal = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(LBprimal, "OutputFlag", 0)
 
-    @variable(LBprimal, policy1[game.actions1] >= 0) # 27f
-    @variable(LBprimal, lambda[game.actions1, game.observations, gammarange] >= 0) # 27g
-    @variable(LBprimal, alphavec[game.actions1, game.observations, game.states])
-    @variable(LBprimal, statevalue[game.states])
+    @variable(LBprimal, 1.0 >= policy1[a1=partition.leaderActions] >= 0.0) # 27f
+    @variable(LBprimal, lambda[a1=partition.leaderActions, o=partition.observations[a1], i=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].gamma)] >= 0.0) # 27g
+    @variable(LBprimal, alphavec[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)])
+    @variable(LBprimal, statevalue[s=partition.states])
 
     # 27a
-    @objective(LBprimal, Max, sum(belief[s] * statevalue[s] for s in game.states))
+    @objective(LBprimal, Max, sum(belief[si] * statevalue[s] for (si, s) in enumerate(partition.states)))
 
     # 27b
-    @constraint(LBprimal, con27b[s=game.states, a2=game.actions2],
-        statevalue[s] <= sum(policy1[a1] * game.reward[s, a1, a2] for a1 in game.actions1)
-                         + gameData.disc * sum(game.transition(s, a1, a2, o, sp) * alphavec[a1, o, sp]
-                                           for a1 in game.actions1 for o in game.observations for sp in game.states))
+    @constraint(LBprimal, con27b[s=partition.states, a2=game.states[s].followerActions],
+        statevalue[s] <= sum(policy1[a1] * partition.rewards[s, a1, a2] for a1 in partition.leaderActions)
+                         + game.disc * sum(get(game.transitionMap, (s, a1, a2, o, sp), 0.0) * alphavec[a1, o, spi]
+                                           for a1 in partition.leaderActions for o in partition.observations[a1] for (spi, sp) in enumerate(game.partitions[partition.partitionTransitions[(a1, o)]].states)))
 
     # 27c
-    @constraint(LBprimal, con27c[a1=game.actions1, o=game.observations, sp=game.states],
-           alphavec[a1, o, sp] == sum(lambda[a1, o, i] * gameData.gamma[i][sp] for i in gammarange))
+    @constraint(LBprimal, con27c[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)],
+           alphavec[a1, o, spi] == sum(lambda[a1, o, i] * game.partitions[partition.partitionTransitions[(a1, o)]].gamma[i][spi] for i in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].gamma)))
 
     # 27d
-    @constraint(LBprimal, con27d[a1=game.actions1, o=game.observations],
-        sum(lambda[a1, o, i] for i in gammarange) == policy1[a1])
+    @constraint(LBprimal, con27d[a1=partition.leaderActions, o=partition.observations[a1]],
+        sum(lambda[a1, o, i] for i in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].gamma)) == policy1[a1])
 
     # 27e
     @constraint(LBprimal, con27e,
-        sum(policy1[a1] for a1 in game.actions1) == 1)
+        sum(policy1[a1] for a1 in partition.leaderActions) == 1)
 
     optimize!(LBprimal)
 
     # policy of 2nd player is represented as joint probability in the LPs
-    policy2conditional = - dual.(LBprimal[:con27b]).data ./ belief
-    policy2conditional = map(x -> isinf(x) | isnan(x) ? zero(x) : x, policy2conditional)
+    policy2conditional = Dict((s, a2) => - val / belief[game.states[s].inPartitionIndex] for ((s, a2), val) in dual.(LBprimal[:con27b]).data)
+    policy2conditional = Dict((s, a2) => isinf(val) | isnan(val) ? zero(val) : val for ((s, a2), val) in policy2conditional)
 
-    return value.(LBprimal[:policy1]).data, policy2conditional, value.(LBprimal[:statevalue]).data
+    policy1 = Dict(a1 => value.(LBprimal[:policy1]).data[i] for (i, a1) in enumerate(partition.leaderActions))
+
+    return policy1, policy2conditional, value.(LBprimal[:statevalue]).data
 end
 
-function computeUBdual(gameData, belief)
-    game = gameData.game
-    upsilonrange = 1:size(gameData.upsilon, 1)
+function computeUBdual(partition::Partition, belief::Array{Float64,1})
+    game = partition.game
+
     UBdual = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(UBdual, "OutputFlag", 0)
 
     @variable(UBdual, gamevalue)
-    @variable(UBdual, policy2[game.states, game.actions2] >= 0) # 28f
-    @variable(UBdual, beliefupdate[game.actions1, game.observations, game.states])
-    @variable(UBdual, subgamevalue[game.actions1, game.observations])
-    @variable(UBdual, lambda[game.actions1, game.observations, upsilonrange] >= 0) # 36f
-    @variable(UBdual, delta[game.actions1, game.observations, game.states])
-    @variable(UBdual, beliefp[game.actions1, game.observations, game.states])
+    @variable(UBdual, 1.0 >= policy2[s=partition.states, a2=game.states[s].followerActions] >= 0.0) # 28f
+    @variable(UBdual, belieftransform[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)])
+    @variable(UBdual, subgamevalue[a1=partition.leaderActions, o=partition.observations[a1]])
+    @variable(UBdual, lambda[a1=partition.leaderActions, o=partition.observations[a1], i=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].upsilon)] >= 0.0) # 36f
+    @variable(UBdual, delta[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)])
+    @variable(UBdual, beliefp[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)])
 
     # 28a
     @objective(UBdual, Min, gamevalue)
 
     # 28b
-    @constraint(UBdual, con28b[a1=game.actions1],
-        gamevalue >= sum(policy2[s, a2] * game.reward[s, a1, a2] for s in game.states for a2 in game.actions2)
-                     + gameData.disc * sum(subgamevalue[a1, o] for o in game.observations))
+    @constraint(UBdual, con28b[a1=partition.leaderActions],
+        gamevalue >= sum(policy2[s, a2] * partition.rewards[s, a1, a2] for s in partition.states for a2 in game.states[s].followerActions)
+                     + game.disc * sum(subgamevalue[a1, o] for o in partition.observations[a1]))
 
     # 28d
-    @constraint(UBdual, con28d[a1=game.actions1, o=game.observations, sp=game.states],
-        beliefupdate[a1, o, sp] >= sum(game.transition(s, a1, a2, o, sp) * policy2[s, a2]
-                                       for s in game.states for a2 in game.actions2))
+    @constraint(UBdual, con28d[a1=partition.leaderActions, o=partition.observations[a1], sp=game.partitions[partition.partitionTransitions[(a1, o)]].states],
+        belieftransform[a1, o, game.states[sp].inPartitionIndex] >= sum(get(game.transitionMap, (s, a1, a2, o, sp), 0.0) * policy2[s, a2]
+                                       for s in partition.states for a2 in game.states[s].followerActions))
 
     # 28e
-    @constraint(UBdual, con28e[s=game.states],
-        sum(policy2[s, a2] for a2 in game.actions2) == belief[s])
+    @constraint(UBdual, con28e[s=partition.states],
+        sum(policy2[s, a2] for a2 in game.states[s].followerActions) == belief[game.states[s].inPartitionIndex])
 
     # 36a
-    @constraint(UBdual, con36a[a1=game.actions1, o=game.observations],
-        subgamevalue[a1, o] == sum(lambda[a1, o, i] * gameData.upsilon[i][2] for i in upsilonrange)
-                               + gameData.lipschitzdelta * sum(delta[a1, o, sp] for sp in game.states))
+    @constraint(UBdual, con36a[a1=partition.leaderActions, o=partition.observations[a1]],
+        subgamevalue[a1, o] == sum(lambda[a1, o, i] * game.partitions[partition.partitionTransitions[(a1, o)]].upsilon[i][2] for i in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].upsilon))
+                               + lipschitzdelta(game) * sum(delta[a1, o, spi] for spi in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)))
 
     # 36b
-    @constraint(UBdual, con36b[a1=game.actions1, o=game.observations, sp=game.states],
-        sum(lambda[a1, o, i] * gameData.upsilon[i][1][sp] for i in upsilonrange) == beliefp[a1, o, sp])
+    @constraint(UBdual, con36b[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)],
+        sum(lambda[a1, o, i] * game.partitions[partition.partitionTransitions[(a1, o)]].upsilon[i][1][spi] for i in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].upsilon)) == beliefp[a1, o, spi])
 
     # 36c
-    @constraint(UBdual, con36c[a1=game.actions1, o=game.observations, sp=game.states],
-        delta[a1, o, sp] >= beliefp[a1, o, sp] - beliefupdate[a1, o, sp])
+    @constraint(UBdual, con36c[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)],
+        delta[a1, o, spi] >= beliefp[a1, o, spi] - belieftransform[a1, o, spi])
 
     # 36d
-    @constraint(UBdual, con36d[a1=game.actions1, o=game.observations, sp=game.states],
-        delta[a1, o, sp] >= beliefupdate[a1, o, sp] - beliefp[a1, o, sp])
+    @constraint(UBdual, con36d[a1=partition.leaderActions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)],
+        delta[a1, o, spi] >= belieftransform[a1, o, spi] - beliefp[a1, o, spi])
 
     # 36e
-    @constraint(UBdual, con36e[a1=game.actions1, o=game.observations],
-        sum(lambda[a1, o, i] for i in upsilonrange) == sum(beliefupdate[a1, o, sp] for sp in game.states))
+    @constraint(UBdual, con36e[a1=partition.leaderActions, o=partition.observations[a1]],
+        sum(lambda[a1, o, i] for i in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].upsilon)) == sum(belieftransform[a1, o, spi] for spi in 1:length(game.partitions[partition.partitionTransitions[(a1, o)]].states)))
 
     optimize!(UBdual)
 
     # policy of 2nd player is represented as joint probability in the LPs
-    policy2conditional = value.(UBdual[:policy2]).data ./ belief
-    policy2conditional = map(x -> isinf(x) | isnan(x) ? zero(x) : x, policy2conditional)
+    policy2conditional = Dict((s, a2) => val / belief[game.states[s].inPartitionIndex] for ((s, a2), val) in value.(UBdual[:policy2]).data)
+    policy2conditional = Dict((s, a2) => isinf(val) | isnan(val) ? zero(val) : val for ((s, a2), val) in policy2conditional)
 
-    return dual.(UBdual[:con28b]).data, policy2conditional, value(UBdual[:gamevalue])
+    policy1 = Dict(a1 => dual.(UBdual[:con28b]).data[i] for (i, a1) in enumerate(partition.leaderActions))
+
+    return policy1, policy2conditional, value(UBdual[:gamevalue])
 end

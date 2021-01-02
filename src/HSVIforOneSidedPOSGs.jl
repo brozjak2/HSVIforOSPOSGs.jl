@@ -34,8 +34,7 @@ function solve(game::Game, initPartition::Partition, initBelief::Array{Float64,1
             globalUpsilonCount
         ))
 
-        return game
-        # explore(initPartition, initBelief, epsilon, D)
+        explore(initPartition, initBelief, epsilon, D)
     end
 
     return game
@@ -48,10 +47,11 @@ function explore(partition, belief, rho, D)
     pointBasedUpdate(partition, belief, alpha, y)
 
     a1, o = selectAOPair(partition, belief, policy1ub, policy2lb, rho)
+    nextPartition = partition.game.partitions[partition.partitionTransitions[(a1, o)]]
 
     if weightedExcess(partition, belief, policy1ub, policy2lb, a1, o, rho) > 0
-        nextBelief = beliefUpdate(partition, belief, policy1ub, policy2lb, a1, o)
-        explore(partition, nextBelief, nextRho(rho, partition.game, D), D)
+        nextBelief = beliefTransform(partition, belief, policy1ub, policy2lb, a1, o)
+        explore(nextPartition, nextBelief, nextRho(rho, partition.game, D), D)
 
         _, _, alpha = computeLBprimal(partition, belief)
         _, _, y = computeUBdual(partition, belief)
@@ -63,6 +63,8 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     start = time()
     game, initPartition, initBelief = load(gameFilePath)
     println(@sprintf("%3.5fs\tGame loaded...", time() - start))
+    prepare(game)
+    println(@sprintf("%3.5fs\tGame prepared...", time() - start))
 
     @assert 0 < D < (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)) @sprintf(
         "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
@@ -71,6 +73,7 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
         (1 - game.disc) * epsilon / (2 * lipschitzdelta(game))
     )
 
+    println("GAME:")
     println("nStates: $(game.nStates)")
     println("nPartitions: $(game.nPartitions)")
     println("nLeaderActions: $(game.nLeaderActions)")
@@ -87,6 +90,7 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("epsilon: $epsilon")
     println("initPartition: $(initPartition.index)")
     println("initBelief: $initBelief")
+    println("--------------------")
 
     # TODO: replace with presolveLB and presolveUB
     initBounds(game)

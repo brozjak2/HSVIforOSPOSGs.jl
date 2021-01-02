@@ -42,9 +42,7 @@ function Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
         transitions, rewards, partitions,
         minReward, maxReward, transitionMap)
 
-    for partition in game.partitions
-        prepare(partition, game)
-    end
+    prepare(game)
 
     return game
 end
@@ -52,6 +50,49 @@ end
 Lmin(game::Game) = game.minReward / (1 - game.disc)
 Umax(game::Game) = game.maxReward / (1 - game.disc)
 lipschitzdelta(game::Game) = (Umax(game) - Lmin(game)) / 2
+
+function prepare(game::Game)
+    for transition in game.transitions
+        s, a1, a2, o, sp, prob = transition
+        partition = game.partitions[game.states[s].partition]
+
+        if haskey(partition.aoTransitions, (a1, o))
+            push!(partition.aoTransitions[(a1, o)], transition)
+        else
+            partition.aoTransitions[(a1, o)] = [transition]
+        end
+
+        if haskey(partition.observations, a1)
+            push!(partition.observations[a1], o)
+        else
+            partition.observations[a1] = [o]
+        end
+
+        if haskey(partition.transitions, s)
+            push!(partition.transitions[s], transition)
+        else
+            partition.transitions[s] = [transition]
+        end
+
+        targetPartition = game.states[sp].partition
+        if !haskey(partition.partitionTransitions, (a1, o))
+            partition.partitionTransitions[(a1, o)] = targetPartition
+        else
+            @assert partition.partitionTransitions[(a1, o)] == targetPartition "Multipartition transition"
+        end
+    end
+
+    for reward in game.rewards
+        s, a1, a2, r = reward
+        partition = game.partitions[game.states[s].partition]
+
+        partition.rewards[(s, a1, a2)] = r
+    end
+
+    for partition in game.partitions
+        prepare(partition, game)
+    end
+end
 
 function initBounds(game::Game)
     for partition in game.partitions

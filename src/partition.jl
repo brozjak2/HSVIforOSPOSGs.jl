@@ -5,6 +5,7 @@ mutable struct Partition
     setStates::Set{Int64}
     leaderActions::Array{Int64,1}
     observations::Dict{Int64,Array{Int64,1}}
+    rewards::Dict{Tuple{Int64,Int64,Int64},Float64}
 
     gamma::Array{Array{Float64,1},1}
     upsilon::Array{Tuple{Array{Float64,1},Float64},1}
@@ -20,6 +21,7 @@ mutable struct Partition
         Set{Int64}([]),
         Array{Int64,1}(undef, 0),
         Dict{Int64,Array{Int64,1}}([]),
+        Dict{Tuple{Int64,Int64,Int64},Float64}([]),
         Array{Array{Float64,1},1}(undef, 0),
         Array{Tuple{Array{Float64,1},Float64},1}(undef, 0),
         Dict{Int64,Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}([]),
@@ -32,40 +34,8 @@ function prepare(partition::Partition, game)
     partition.game = game
     partition.setStates = Set(partition.states)
 
-    setObservations = Dict{Int64,Set{Int64}}([])
-    for transition in partition.game.transitions
-        s, a1, a2, o, sp, prob = transition
-
-        if s in partition.setStates
-            if haskey(partition.aoTransitions, (a1, o))
-                push!(partition.aoTransitions[(a1, o)], transition)
-            else
-                partition.aoTransitions[(a1, o)] = [transition]
-            end
-
-            if haskey(setObservations, a1)
-                push!(setObservations[a1], o)
-            else
-                setObservations[a1] = Set([o])
-            end
-
-            if haskey(partition.transitions, s)
-                push!(partition.transitions[s], transition)
-            else
-                partition.transitions[s] = [transition]
-            end
-
-            targetPartition = game.states[sp].partition
-            if !haskey(partition.partitionTransitions, (a1, o))
-                partition.partitionTransitions[(a1, o)] = targetPartition
-            else
-                @assert partition.partitionTransitions[(a1, o)] == targetPartition "Multipartition transition"
-            end
-        end
-    end
-
-    for (a1, obs) in setObservations
-        partition.observations[a1] = collect(obs)
+    for (a1, obs) in partition.observations
+        partition.observations[a1] = unique(obs)
     end
 end
 
@@ -88,34 +58,35 @@ function LBValue(partition::Partition, belief::Array{Float64,1})
 end
 
 function UBValue(partition::Partition, belief::Array{Float64,1})
-    nUpsilon = length(partition.upsilon)
+    lenUpsilon = length(partition.upsilon)
     nStates = length(partition.states)
+
     UBvalueLP = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     JuMP.set_optimizer_attribute(UBvalueLP, "OutputFlag", 0)
 
-    @variable(UBvalueLP, lambda[1:nUpsilon] >= 0) # 33f
-    @variable(UBvalueLP, delta[1:nStates])
-    @variable(UBvalueLP, beliefp[1:nStates])
+    @variable(UBvalueLP, lambda[i=1:lenUpsilon] >= 0) # 33f
+    @variable(UBvalueLP, delta[si=1:nStates])
+    @variable(UBvalueLP, beliefp[si=1:nStates])
 
     # 33a
-    @objective(UBvalueLP, Min, sum(lambda[i] * partition.upsilon[i][2] for i in 1:nUpsilon)
-                               + lipschitzdelta(partition.game) * sum(delta[sp] for sp in 1:nStates))
+    @objective(UBvalueLP, Min, sum(lambda[i] * partition.upsilon[i][2] for i in 1:lenUpsilon)
+                               + lipschitzdelta(partition.game) * sum(delta[si] for si in 1:nStates))
 
     # 33b
-    @constraint(UBvalueLP, con33b[s=1:nStates],
-        sum(lambda[i] * partition.upsilon[i][1][s] for i in 1:nUpsilon) == beliefp[s])
+    @constraint(UBvalueLP, con33b[si=1:nStates],
+        sum(lambda[i] * partition.upsilon[i][1][si] for i in 1:lenUpsilon) == beliefp[si])
 
     # 33c
-    @constraint(UBvalueLP, con33c[s=1:nStates],
-        delta[s] >= beliefp[s] - belief[s])
+    @constraint(UBvalueLP, con33c[si=1:nStates],
+        delta[si] >= beliefp[si] - belief[si])
 
     # 33d
-    @constraint(UBvalueLP, con33d[s=1:nStates],
-        delta[s] >= belief[s] - beliefp[s])
+    @constraint(UBvalueLP, con33d[si=1:nStates],
+        delta[si] >= belief[si] - beliefp[si])
 
     # 33e
     @constraint(UBvalueLP, con33e,
-        sum(lambda[i] for i in 1:nUpsilon) == 1)
+        sum(lambda[i] for i in 1:lenUpsilon) == 1)
 
     optimize!(UBvalueLP)
 

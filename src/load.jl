@@ -28,8 +28,8 @@ function load(gameFilePath::String)
         for i = 1:nStates
             name = readuntil(file, ' ')
             partition = parse(Int64, readuntil(file, '\n')) + 1
-            states[i] = State(i, name, partition, Array{Int64,1}(undef, 0))
             push!(partitions[partition].states, i)
+            states[i] = State(i, length(partitions[partition].states), name, partition, Array{Int64,1}(undef, 0))
         end
 
         for i = 1:nLeaderActions

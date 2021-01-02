@@ -1,5 +1,5 @@
 function load(gameFilePath::String)
-    game, initPartition, initBelief = Nothing, Nothing, Nothing
+    game, initPartition, initBelief = nothing, nothing, nothing
 
     open(gameFilePath, "r") do file
         parameters = split(readline(file), ' ')
@@ -22,21 +22,14 @@ function load(gameFilePath::String)
         rewards = Array{Tuple{Int64,Int64,Int64,Float64},1}(undef, nRewards)
 
         for i = 1:nPartitions
-            partitions[i] = Partition(
-                i,
-                Array{Int64,1}(undef, 0),
-                Array{Int64,1}(undef, 0),
-                Dict{Int64,Array{Int64,1}}([]),
-                Array{Array{Float64,1},1}(undef, 0),
-                Array{Tuple{Array{Float64,1},Float64},1}(undef, 0)
-            )
+            partitions[i] = Partition(i)
         end
 
         for i = 1:nStates
             name = readuntil(file, ' ')
             partition = parse(Int64, readuntil(file, '\n')) + 1
             states[i] = State(i, name, partition, Array{Int64,1}(undef, 0))
-            append!(partitions[partition].states, [i])
+            push!(partitions[partition].states, i)
         end
 
         for i = 1:nLeaderActions
@@ -63,16 +56,16 @@ function load(gameFilePath::String)
 
         for i = 1:nTransitions
             parsedLine = split(readline(file), ' ')
-            parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:end-1]]
-            prob = parse(Float64, parsedLine[end])
+            parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:5]]
+            prob = parse(Float64, parsedLine[6])
 
             transitions[i] = (parsedInts..., prob)
         end
 
         for i = 1:nRewards
             parsedLine = split(readline(file), ' ')
-            parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:end-1]]
-            reward = parse(Float64, parsedLine[end])
+            parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:3]]
+            reward = parse(Float64, parsedLine[4])
 
             rewards[i] = (parsedInts..., reward)
         end
@@ -81,14 +74,10 @@ function load(gameFilePath::String)
         initPartition = partitions[initPartitionIndex]
         initBelief = [parse(Float64, x) for x in split(readline(file), ' ')]
 
-        minReward = minimum([r[4] for r in rewards])
-        maxReward = maximum([r[4] for r in rewards])
-
         game = Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
                     nObservations, nTransitions, nRewards, disc,
                     states, leaderActions, followerActions, observations,
-                    transitions, rewards, partitions,
-                    minReward, maxReward)
+                    transitions, rewards, partitions)
     end
 
     return game, initPartition, initBelief

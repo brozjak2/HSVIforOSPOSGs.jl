@@ -19,13 +19,42 @@ function __init__()
     GRB_ENV[] = Gurobi.Env()
 end
 
-function solve(game::Game, initPartition::Partition, initBelief::Array{Float64,1}, epsilon::Float64, D::Float64, start::Float64)
+function presolveUB(game::Game, presolveDelta::Float64, presolveLimit::Float64)
+    U = Umax(game)
+
+    for partition in game.partitions
+        n = length(partition.states)
+        for i = 1:n
+            belief = zeros(n)
+            belief[i] += 1
+            push!(partition.upsilon, (belief, U))
+        end
+    end
+end
+
+function presolveLB(game::Game, presolveDelta::Float64, presolveLimit::Float64)
+    L = Lmin(game)
+
+    for partition in game.partitions
+        n = length(partition.states)
+        push!(partition.gamma, fill(L, n))
+    end
+end
+
+function solve(
+    game::Game,
+    initPartition::Partition,
+    initBelief::Array{Float64,1},
+    epsilon::Float64,
+    D::Float64,
+    start::Float64,
+)
     while excess(initPartition, initBelief, epsilon) > 0
         globalAlphaCount = sum(length(p.gamma) for p in game.partitions)
         globalUpsilonCount = sum(length(p.upsilon) for p in game.partitions)
 
         println(@sprintf(
-            "%3.5fs\t%+3.5f\t%+3.5f\t%+3.5f\t%4d\t%4d",
+            "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
             time() - start,
             LBValue(initPartition, initBelief),
             UBValue(initPartition, initBelief),
@@ -59,12 +88,18 @@ function explore(partition, belief, rho, D)
     end
 end
 
-function main(gameFilePath::String, epsilon::Float64, D::Float64)
+function main(
+    gameFilePath::String,
+    epsilon::Float64,
+    D::Float64,
+    presolveDelta::Float64,
+    presolveLimit::Float64,
+)
     start = time()
     game, initPartition, initBelief = load(gameFilePath)
-    println(@sprintf("%3.5fs\tGame loaded...", time() - start))
+    println(@sprintf("%7.3fs\tGame loaded", time() - start))
     prepare(game)
-    println(@sprintf("%3.5fs\tGame prepared...", time() - start))
+    println(@sprintf("%7.3fs\tGame prepared", time() - start))
 
     @assert 0 < D < (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)) @sprintf(
         "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
@@ -83,8 +118,8 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("nRewards: $(game.nRewards)")
     println("minReward: $(game.minReward)")
     println("maxReward: $(game.maxReward)")
-    println("LB: $(game.minReward / (1 - game.disc))")
-    println("UB: $(game.maxReward / (1 - game.disc))")
+    println("Lmin: $(Lmin(game))")
+    println("Umax: $(Umax(game))")
     println("lipschitzdelta: $(lipschitzdelta(game))")
     println("D: $D")
     println("epsilon: $epsilon")
@@ -92,11 +127,25 @@ function main(gameFilePath::String, epsilon::Float64, D::Float64)
     println("initBelief: $initBelief")
     println("--------------------")
 
-    # TODO: replace with presolveLB and presolveUB
-    initBounds(game)
-    println(@sprintf("%3.5fs\tBounds initialized...", time() - start))
+    presolveUB(game, presolveDelta, presolveLimit)
+    println(@sprintf(
+        "%7.3fs\tpresolveUB\t%+9.3f",
+        time() - start,
+        UBValue(initPartition, initBelief),
+    ))
+    presolveLB(game, presolveDelta, presolveLimit)
+    println(@sprintf(
+        "%7.3fs\tpresolveLB\t%+9.3f",
+        time() - start,
+        LBValue(initPartition, initBelief),
+    ))
 
     solve(game, initPartition, initBelief, epsilon, D, start)
+    println(@sprintf(
+        "%7.3fs\tGame solved\t%+9.3f",
+        time() - start,
+        width(initPartition, initBelief),
+    ))
 end
 
 end

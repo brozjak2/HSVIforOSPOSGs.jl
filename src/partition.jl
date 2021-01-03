@@ -39,20 +39,6 @@ function prepare(partition::Partition, game)
     end
 end
 
-function initBounds(partition::Partition)
-    L = Lmin(partition.game)
-    U = Umax(partition.game)
-    n = length(partition.states)
-
-    push!(partition.gamma, repeat([L], n))
-
-    for i = 1:n
-        belief = zeros(n)
-        belief[i] += 1
-        push!(partition.upsilon, (belief, U))
-    end
-end
-
 function LBValue(partition::Partition, belief::Array{Float64,1})
     return maximum(sum(alpha .* belief) for alpha in partition.gamma)
 end

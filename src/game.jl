@@ -93,9 +93,3 @@ function prepare(game::Game)
         prepare(partition, game)
     end
 end
-
-function initBounds(game::Game)
-    for partition in game.partitions
-        initBounds(partition)
-    end
-end

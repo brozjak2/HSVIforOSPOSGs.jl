@@ -3,6 +3,7 @@ module HSVIforOneSidedPOSGs
 using Printf
 using JuMP
 using Gurobi
+using Logging
 
 export main
 
@@ -24,60 +25,58 @@ function main(
     epsilon::Float64,
     D::Float64,
     presolveDelta::Float64,
-    presolveLimit::Float64,
-    verbose::Bool=false
+    presolveLimit::Float64
 )
     start = time()
+
     game, initPartition, initBelief = load(gameFilePath)
-    println_if_verbose(verbose, @sprintf("%7.3fs\tGame loaded", time() - start))
+    @info @sprintf("%7.3fs\tGame loaded", time() - start)
+
     prepare(game)
-    println_if_verbose(verbose, @sprintf("%7.3fs\tGame prepared", time() - start))
+    @info @sprintf("%7.3fs\tGame prepared", time() - start)
 
-    @assert 0 < D < (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)) @sprintf(
-        "neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
-        D,
-        0,
-        (1 - game.disc) * epsilon / (2 * lipschitzdelta(game))
-    )
+    if D <= 0 || D >= (1 - game.disc) * epsilon / (2 * lipschitzdelta(game))
+        @warn @sprintf("neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
+            D, 0, (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)))
+    end
 
-    println_if_verbose(verbose, "GAME:")
-    println_if_verbose(verbose, "nStates: $(game.nStates)")
-    println_if_verbose(verbose, "nPartitions: $(game.nPartitions)")
-    println_if_verbose(verbose, "nLeaderActions: $(game.nLeaderActions)")
-    println_if_verbose(verbose, "nFollowerActions: $(game.nFollowerActions)")
-    println_if_verbose(verbose, "nObservations: $(game.nObservations)")
-    println_if_verbose(verbose, "nTransitions: $(game.nTransitions)")
-    println_if_verbose(verbose, "nRewards: $(game.nRewards)")
-    println_if_verbose(verbose, "minReward: $(game.minReward)")
-    println_if_verbose(verbose, "maxReward: $(game.maxReward)")
-    println_if_verbose(verbose, "Lmin: $(Lmin(game))")
-    println_if_verbose(verbose, "Umax: $(Umax(game))")
-    println_if_verbose(verbose, "lipschitzdelta: $(lipschitzdelta(game))")
-    println_if_verbose(verbose, "D: $D")
-    println_if_verbose(verbose, "epsilon: $epsilon")
-    println_if_verbose(verbose, "initPartition: $(initPartition.index)")
-    println_if_verbose(verbose, "initBelief: $initBelief")
-    println_if_verbose(verbose, "--------------------")
+    begin
+        @info "GAME:"
+        @info "nStates: $(game.nStates)"
+        @info "nPartitions: $(game.nPartitions)"
+        @info "nLeaderActions: $(game.nLeaderActions)"
+        @info "nFollowerActions: $(game.nFollowerActions)"
+        @info "nObservations: $(game.nObservations)"
+        @info "nTransitions: $(game.nTransitions)"
+        @info "nRewards: $(game.nRewards)"
+        @info "minReward: $(game.minReward)"
+        @info "maxReward: $(game.maxReward)"
+        @info "Lmin: $(Lmin(game))"
+        @info "Umax: $(Umax(game))"
+        @info "lipschitzdelta: $(lipschitzdelta(game))"
+        @info "D: $D"
+        @info "epsilon: $epsilon"
+        @info "initPartition: $(initPartition.index)"
+        @info "initBelief: $initBelief"
+    end
 
     presolveUB(game, presolveDelta, presolveLimit)
-    println_if_verbose(verbose, @sprintf(
-        "%7.3fs\tpresolveUB\t%+9.3f",
+    @info @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
         time() - start,
         UBValue(initPartition, initBelief),
-    ))
+    )
+
     presolveLB(game, presolveDelta, presolveLimit)
-    println_if_verbose(verbose, @sprintf(
-        "%7.3fs\tpresolveLB\t%+9.3f",
+    @info @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
         time() - start,
         LBValue(initPartition, initBelief),
-    ))
+    )
 
-    solve(game, initPartition, initBelief, epsilon, D, start, verbose)
-    println_if_verbose(verbose, @sprintf(
-        "%7.3fs\tGame solved\t%+9.3f",
+    solve(game, initPartition, initBelief, epsilon, D, start)
+    @info @sprintf("%7.3fs\tGame solved\t%+9.3f",
         time() - start,
         width(initPartition, initBelief),
-    ))
+    )
 
     return game, initPartition, initBelief
 end
@@ -110,22 +109,20 @@ function solve(
     initBelief::Array{Float64,1},
     epsilon::Float64,
     D::Float64,
-    start::Float64,
-    verbose::Bool
+    start::Float64
 )
     while excess(initPartition, initBelief, epsilon) > 0
         globalAlphaCount = sum(length(p.gamma) for p in game.partitions)
         globalUpsilonCount = sum(length(p.upsilon) for p in game.partitions)
 
-        println_if_verbose(verbose, @sprintf(
-            "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+        @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
             time() - start,
             LBValue(initPartition, initBelief),
             UBValue(initPartition, initBelief),
             width(initPartition, initBelief),
             globalAlphaCount,
             globalUpsilonCount
-        ))
+        )
 
         explore(initPartition, initBelief, epsilon, D)
     end
@@ -149,12 +146,6 @@ function explore(partition, belief, rho, D)
         _, _, alpha = computeLBprimal(partition, belief)
         _, _, y = computeUBdual(partition, belief)
         pointBasedUpdate(partition, belief, alpha, y)
-    end
-end
-
-function println_if_verbose(verbose::Bool, text::String)
-    if verbose
-        println(text)
     end
 end
 

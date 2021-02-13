@@ -2,8 +2,8 @@ mutable struct Partition <: AbstractPartition
     game::AbstractGame
     index::Int64
     states::Array{Int64,1}
-    setStates::Set{Int64}
-    leaderActions::Array{Int64,1}
+    states_set::Set{Int64}
+    leader_actions::Array{Int64,1}
     observations::Dict{Int64,Array{Int64,1}}
     rewards::Dict{Tuple{Int64,Int64,Int64},Float64}
 
@@ -11,8 +11,8 @@ mutable struct Partition <: AbstractPartition
     upsilon::Array{Tuple{Array{Float64,1},Float64},1}
 
     transitions::Dict{Int64,Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}
-    aoTransitions::Dict{Tuple{Int64,Int64},Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}
-    partitionTransitions::Dict{Tuple{Int64,Int64},Int64}
+    ao_pair_transitions::Dict{Tuple{Int64,Int64},Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}
+    partition_transitions::Dict{Tuple{Int64,Int64},Int64}
 end
 
 Partition(game::AbstractGame, index::Int64) = Partition(
@@ -31,58 +31,58 @@ Partition(game::AbstractGame, index::Int64) = Partition(
 )
 
 function prepare(partition::Partition, game)
-    partition.setStates = Set(partition.states)
+    partition.states_set = Set(partition.states)
 
     for (a1, obs) in partition.observations
         partition.observations[a1] = unique(obs)
     end
 end
 
-function LBValue(partition::Partition, belief::Array{Float64,1})
+function LB_value(partition::Partition, belief::Array{Float64,1})
     return maximum(sum(alpha .* belief) for alpha in partition.gamma)
 end
 
-function UBValue(partition::Partition, belief::Array{Float64,1})
-    lenUpsilon = length(partition.upsilon)
-    nStates = length(partition.states)
+function UB_value(partition::Partition, belief::Array{Float64,1})
+    upsilon_size = length(partition.upsilon)
+    state_count = length(partition.states)
 
-    UBvalueLP = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
-    JuMP.set_optimizer_attribute(UBvalueLP, "OutputFlag", 0)
+    UB_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
+    JuMP.set_optimizer_attribute(UB_value_model, "OutputFlag", 0)
 
-    @variable(UBvalueLP, lambda[i=1:lenUpsilon] >= 0) # 33f
-    @variable(UBvalueLP, delta[si=1:nStates])
-    @variable(UBvalueLP, beliefp[si=1:nStates])
+    @variable(UB_value_model, lambda[i=1:upsilon_size] >= 0) # 33f
+    @variable(UB_value_model, delta[si=1:state_count])
+    @variable(UB_value_model, beliefp[si=1:state_count])
 
     # 33a
-    @objective(UBvalueLP, Min, sum(lambda[i] * partition.upsilon[i][2] for i in 1:lenUpsilon)
-                               + lipschitzdelta(partition.game) * sum(delta[si] for si in 1:nStates))
+    @objective(UB_value_model, Min, sum(lambda[i] * partition.upsilon[i][2] for i in 1:upsilon_size)
+                               + lipschitz_delta(partition.game) * sum(delta[si] for si in 1:state_count))
 
     # 33b
-    @constraint(UBvalueLP, con33b[si=1:nStates],
-        sum(lambda[i] * partition.upsilon[i][1][si] for i in 1:lenUpsilon) == beliefp[si])
+    @constraint(UB_value_model, con33b[si=1:state_count],
+        sum(lambda[i] * partition.upsilon[i][1][si] for i in 1:upsilon_size) == beliefp[si])
 
     # 33c
-    @constraint(UBvalueLP, con33c[si=1:nStates],
+    @constraint(UB_value_model, con33c[si=1:state_count],
         delta[si] >= beliefp[si] - belief[si])
 
     # 33d
-    @constraint(UBvalueLP, con33d[si=1:nStates],
+    @constraint(UB_value_model, con33d[si=1:state_count],
         delta[si] >= belief[si] - beliefp[si])
 
     # 33e
-    @constraint(UBvalueLP, con33e,
-        sum(lambda[i] for i in 1:lenUpsilon) == 1)
+    @constraint(UB_value_model, con33e,
+        sum(lambda[i] for i in 1:upsilon_size) == 1)
 
-    optimize!(UBvalueLP)
+    optimize!(UB_value_model)
 
-    return objective_value(UBvalueLP)
+    return objective_value(UB_value_model)
 end
 
 function width(partition::Partition, belief::Array{Float64,1})
-    return UBValue(partition, belief) - LBValue(partition, belief)
+    return UB_value(partition, belief) - LB_value(partition, belief)
 end
 
-function pointBasedUpdate(partition::Partition, belief::Array{Float64,1}, alpha::Array{Float64,1}, y::Float64)
+function point_based_update(partition::Partition, belief::Array{Float64,1}, alpha::Array{Float64,1}, y::Float64)
     push!(partition.gamma, alpha)
     push!(partition.upsilon, (belief, y))
 end

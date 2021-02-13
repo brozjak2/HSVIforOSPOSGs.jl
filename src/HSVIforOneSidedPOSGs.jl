@@ -7,6 +7,7 @@ using Logging
 
 export main
 
+include("exceptions.jl")
 include("abstract_types.jl")
 include("state.jl")
 include("partition.jl")
@@ -22,68 +23,68 @@ function __init__()
 end
 
 function main(
-    gameFilePath::String,
+    game_file_path::String,
     epsilon::Float64,
-    D::Float64,
-    presolveDelta::Float64,
-    presolveLimit::Float64
+    neigh_param_d::Float64,
+    presolve_min_delta::Float64,
+    presolve_time_limit::Float64
 )
     start = time()
 
-    game, initPartition, initBelief = load(gameFilePath)
+    game, init_partition, init_belief = load(game_file_path)
     @info @sprintf("%7.3fs\tGame loaded", time() - start)
 
     prepare(game)
     @info @sprintf("%7.3fs\tGame prepared", time() - start)
 
-    if D <= 0 || D >= (1 - game.disc) * epsilon / (2 * lipschitzdelta(game))
-        @warn @sprintf("neighborhood parameter D = %.5f is outside bounds (%.5f, %.5f)",
-            D, 0, (1 - game.disc) * epsilon / (2 * lipschitzdelta(game)))
+    if neigh_param_d <= 0 || neigh_param_d >= (1 - game.disc) * epsilon / (2 * lipschitz_delta(game))
+        @warn @sprintf("neighborhood parameter neigh_param_d = %.5f is outside bounds (%.5f, %.5f)",
+            neigh_param_d, 0, (1 - game.disc) * epsilon / (2 * lipschitz_delta(game)))
     end
 
     begin
         @info "GAME:"
-        @info "nStates: $(game.nStates)"
-        @info "nPartitions: $(game.nPartitions)"
-        @info "nLeaderActions: $(game.nLeaderActions)"
-        @info "nFollowerActions: $(game.nFollowerActions)"
-        @info "nObservations: $(game.nObservations)"
-        @info "nTransitions: $(game.nTransitions)"
-        @info "nRewards: $(game.nRewards)"
-        @info "minReward: $(game.minReward)"
-        @info "maxReward: $(game.maxReward)"
-        @info "Lmin: $(Lmin(game))"
-        @info "Umax: $(Umax(game))"
-        @info "lipschitzdelta: $(lipschitzdelta(game))"
-        @info "D: $D"
+        @info "state_count: $(game.state_count)"
+        @info "partition_count: $(game.partition_count)"
+        @info "leader_action_count: $(game.leader_action_count)"
+        @info "follower_action_count: $(game.follower_action_count)"
+        @info "observation_count: $(game.observation_count)"
+        @info "transition_count: $(game.transition_count)"
+        @info "reward_count: $(game.reward_count)"
+        @info "minimal_reward: $(game.minimal_reward)"
+        @info "maximal_reward: $(game.maximal_reward)"
+        @info "LB_min: $(LB_min(game))"
+        @info "UB_max: $(UB_max(game))"
+        @info "lipschitz_delta: $(lipschitz_delta(game))"
+        @info "neigh_param_d: $neigh_param_d"
         @info "epsilon: $epsilon"
-        @info "initPartition: $(initPartition.index)"
-        @info "initBelief: $initBelief"
+        @info "init_partition: $(init_partition.index)"
+        @info "init_belief: $init_belief"
     end
 
-    presolveUB(game, presolveDelta, presolveLimit)
+    presolve_UB(game, presolve_min_delta, presolve_time_limit)
     @info @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
         time() - start,
-        UBValue(initPartition, initBelief),
+        UB_value(init_partition, init_belief),
     )
 
-    presolveLB(game, presolveDelta, presolveLimit)
+    presolve_LB(game, presolve_min_delta, presolve_time_limit)
     @info @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
         time() - start,
-        LBValue(initPartition, initBelief),
+        LB_value(init_partition, init_belief),
     )
 
-    solve(game, initPartition, initBelief, epsilon, D, start)
+    solve(game, init_partition, init_belief, epsilon, neigh_param_d, start)
     @info @sprintf("%7.3fs\tGame solved\t%+9.3f",
         time() - start,
-        width(initPartition, initBelief),
+        width(init_partition, init_belief),
     )
 
-    return game, initPartition, initBelief
+    return game, init_partition, init_belief
 end
 
-function presolveUB(game::Game, presolveDelta::Float64, presolveLimit::Float64)
-    U = Umax(game)
+function presolve_UB(game::Game, presolve_min_delta::Float64, presolve_time_limit::Float64)
+    U = UB_max(game)
 
     for partition in game.partitions
         n = length(partition.states)
@@ -95,8 +96,8 @@ function presolveUB(game::Game, presolveDelta::Float64, presolveLimit::Float64)
     end
 end
 
-function presolveLB(game::Game, presolveDelta::Float64, presolveLimit::Float64)
-    L = Lmin(game)
+function presolve_LB(game::Game, presolve_min_delta::Float64, presolve_time_limit::Float64)
+    L = LB_min(game)
 
     for partition in game.partitions
         n = length(partition.states)
@@ -106,47 +107,47 @@ end
 
 function solve(
     game::Game,
-    initPartition::Partition,
-    initBelief::Array{Float64,1},
+    init_partition::Partition,
+    init_belief::Array{Float64,1},
     epsilon::Float64,
-    D::Float64,
+    neigh_param_d::Float64,
     start::Float64
 )
-    while excess(initPartition, initBelief, epsilon) > 0
-        globalAlphaCount = sum(length(p.gamma) for p in game.partitions)
-        globalUpsilonCount = sum(length(p.upsilon) for p in game.partitions)
+    while excess(init_partition, init_belief, epsilon) > 0
+        global_gamma_size = sum(length(p.gamma) for p in game.partitions)
+        global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
         @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
             time() - start,
-            LBValue(initPartition, initBelief),
-            UBValue(initPartition, initBelief),
-            width(initPartition, initBelief),
-            globalAlphaCount,
-            globalUpsilonCount
+            LB_value(init_partition, init_belief),
+            UB_value(init_partition, init_belief),
+            width(init_partition, init_belief),
+            global_gamma_size,
+            global_upsilon_size
         )
 
-        explore(initPartition, initBelief, epsilon, D)
+        explore(init_partition, init_belief, epsilon, neigh_param_d)
     end
 
     return game
 end
 
-function explore(partition, belief, rho, D)
-    _, policy2lb, alpha = computeLBprimal(partition, belief)
-    policy1ub, _, y = computeUBdual(partition, belief)
+function explore(partition, belief, rho, neigh_param_d)
+    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    UB_leader_policy, _, y = compute_UB_dual(partition, belief)
 
-    pointBasedUpdate(partition, belief, alpha, y)
+    point_based_update(partition, belief, alpha, y)
 
-    a1, o = selectAOPair(partition, belief, policy1ub, policy2lb, rho)
-    nextPartition = partition.game.partitions[partition.partitionTransitions[(a1, o)]]
+    a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
+    next_partition = partition.game.partitions[partition.partition_transitions[(a1, o)]]
 
-    if weightedExcess(partition, belief, policy1ub, policy2lb, a1, o, rho) > 0
-        nextBelief = beliefTransform(partition, belief, policy1ub, policy2lb, a1, o)
-        explore(nextPartition, nextBelief, nextRho(rho, partition.game, D), D)
+    if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho) > 0
+        next_belief = get_next_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
+        explore(next_partition, next_belief, next_rho(rho, partition.game, neigh_param_d), neigh_param_d)
 
-        _, _, alpha = computeLBprimal(partition, belief)
-        _, _, y = computeUBdual(partition, belief)
-        pointBasedUpdate(partition, belief, alpha, y)
+        _, _, alpha = compute_LB_primal(partition, belief)
+        _, _, y = compute_UB_dual(partition, belief)
+        point_based_update(partition, belief, alpha, y)
     end
 end
 

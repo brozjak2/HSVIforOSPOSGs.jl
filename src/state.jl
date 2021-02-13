@@ -1,9 +1,9 @@
 mutable struct State
     game::AbstractGame
     index::Int64
-    inPartitionIndex::Int64
+    in_partition_index::Int64
     name::String
     partition::AbstractPartition
-    partitionIndex::Int64
-    followerActions::Array{Int64,1}
+    partition_index::Int64
+    follower_actions::Array{Int64,1}
 end

@@ -1,84 +1,84 @@
 mutable struct Game <: AbstractGame
-    nStates::Int64
-    nPartitions::Int64
-    nLeaderActions::Int64
-    nFollowerActions::Int64
-    nObservations::Int64
-    nTransitions::Int64
-    nRewards::Int64
+    state_count::Int64
+    partition_count::Int64
+    leader_action_count::Int64
+    follower_action_count::Int64
+    observation_count::Int64
+    transition_count::Int64
+    reward_count::Int64
 
     disc::Float64
 
     states::Array{State,1}
-    leaderActions::Array{String,1}
-    followerActions::Array{String,1}
+    leader_actions::Array{String,1}
+    follower_actions::Array{String,1}
     observations::Array{String,1}
     transitions::Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}
     rewards::Array{Tuple{Int64,Int64,Int64,Float64},1}
     partitions::Array{Partition,1}
 
-    minReward::Float64
-    maxReward::Float64
+    minimal_reward::Float64
+    maximal_reward::Float64
 
-    transitionMap::Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}
+    transition_map::Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}
 end
 
 function Game(parameters)
-    nStates = parse(Int64, parameters[1])
-    nPartitions = parse(Int64, parameters[2])
-    nLeaderActions = parse(Int64, parameters[3])
-    nFollowerActions = parse(Int64, parameters[4])
-    nObservations = parse(Int64, parameters[5])
-    nTransitions = parse(Int64, parameters[6])
-    nRewards = parse(Int64, parameters[7])
+    state_count = parse(Int64, parameters[1])
+    partition_count = parse(Int64, parameters[2])
+    leader_action_count = parse(Int64, parameters[3])
+    follower_action_count = parse(Int64, parameters[4])
+    observation_count = parse(Int64, parameters[5])
+    transition_count = parse(Int64, parameters[6])
+    reward_count = parse(Int64, parameters[7])
     disc = parse(Float64, parameters[8])
 
-    states = Array{State,1}(undef, nStates)
-    partitions = Array{Partition,1}(undef, nPartitions)
-    leaderActions = Array{String,1}(undef, nLeaderActions)
-    followerActions = Array{String,1}(undef, nFollowerActions)
-    observations = Array{String,1}(undef, nObservations)
-    transitions = Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}(undef, nTransitions)
-    rewards = Array{Tuple{Int64,Int64,Int64,Float64},1}(undef, nRewards)
+    states = Array{State,1}(undef, state_count)
+    partitions = Array{Partition,1}(undef, partition_count)
+    leader_actions = Array{String,1}(undef, leader_action_count)
+    follower_actions = Array{String,1}(undef, follower_action_count)
+    observations = Array{String,1}(undef, observation_count)
+    transitions = Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}(undef, transition_count)
+    rewards = Array{Tuple{Int64,Int64,Int64,Float64},1}(undef, reward_count)
 
-    return Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
-        nObservations, nTransitions, nRewards, disc,
-        states, leaderActions, followerActions, observations,
+    return Game(state_count, partition_count, leader_action_count, follower_action_count,
+        observation_count, transition_count, reward_count, disc,
+        states, leader_actions, follower_actions, observations,
         transitions, rewards, partitions)
 end
 
-function Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
-    nObservations, nTransitions, nRewards, disc,
-    states, leaderActions, followerActions, observations,
+function Game(state_count, partition_count, leader_action_count, follower_action_count,
+    observation_count, transition_count, reward_count, disc,
+    states, leader_actions, follower_actions, observations,
     transitions, rewards, partitions)
 
-    transitionMap = Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}([])
+    transition_map = Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}([])
 
-    game = Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
-        nObservations, nTransitions, nRewards, disc,
-        states, leaderActions, followerActions, observations,
+    game = Game(state_count, partition_count, leader_action_count, follower_action_count,
+        observation_count, transition_count, reward_count, disc,
+        states, leader_actions, follower_actions, observations,
         transitions, rewards, partitions,
-        0, 0, transitionMap)
+        0, 0, transition_map)
 
     return game
 end
 
 function prepare(game::Game)
-    game.minReward = minimum([r[4] for r in game.rewards])
-    game.maxReward = maximum([r[4] for r in game.rewards])
+    game.minimal_reward = minimum([r[4] for r in game.rewards])
+    game.maximal_reward = maximum([r[4] for r in game.rewards])
 
     for transition in game.transitions
-        game.transitionMap[transition[1:5]] = transition[6]
+        game.transition_map[transition[1:5]] = transition[6]
     end
 
     for transition in game.transitions
         s, a1, a2, o, sp, prob = transition
         partition = game.states[s].partition
 
-        if haskey(partition.aoTransitions, (a1, o))
-            push!(partition.aoTransitions[(a1, o)], transition)
+        if haskey(partition.ao_pair_transitions, (a1, o))
+            push!(partition.ao_pair_transitions[(a1, o)], transition)
         else
-            partition.aoTransitions[(a1, o)] = [transition]
+            partition.ao_pair_transitions[(a1, o)] = [transition]
         end
 
         if haskey(partition.observations, a1)
@@ -93,11 +93,11 @@ function prepare(game::Game)
             partition.transitions[s] = [transition]
         end
 
-        targetPartition = game.states[sp].partitionIndex
-        if !haskey(partition.partitionTransitions, (a1, o))
-            partition.partitionTransitions[(a1, o)] = targetPartition
-        else
-            @assert partition.partitionTransitions[(a1, o)] == targetPartition "Multipartition transition"
+        target_partition = game.states[sp].partition_index
+        if !haskey(partition.partition_transitions, (a1, o))
+            partition.partition_transitions[(a1, o)] = target_partition
+        elseif partition.partition_transitions[(a1, o)] != target_partition
+            throw(MultiPartitionTransitionException())
         end
     end
 
@@ -113,8 +113,8 @@ function prepare(game::Game)
     end
 end
 
-Lmin(game::Game) = game.minReward / (1 - game.disc)
+LB_min(game::Game) = game.minimal_reward / (1 - game.disc)
 
-Umax(game::Game) = game.maxReward / (1 - game.disc)
+UB_max(game::Game) = game.maximal_reward / (1 - game.disc)
 
-lipschitzdelta(game::Game) = (Umax(game) - Lmin(game)) / 2
+lipschitz_delta(game::Game) = (UB_max(game) - LB_min(game)) / 2

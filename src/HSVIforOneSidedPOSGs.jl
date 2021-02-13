@@ -7,6 +7,7 @@ using Logging
 
 export main
 
+include("abstract_types.jl")
 include("state.jl")
 include("partition.jl")
 include("game.jl")

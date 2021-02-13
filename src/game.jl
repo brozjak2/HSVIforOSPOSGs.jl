@@ -1,4 +1,4 @@
-struct Game
+mutable struct Game <: AbstractGame
     nStates::Int64
     nPartitions::Int64
     nLeaderActions::Int64
@@ -23,38 +23,57 @@ struct Game
     transitionMap::Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}
 end
 
+function Game(parameters)
+    nStates = parse(Int64, parameters[1])
+    nPartitions = parse(Int64, parameters[2])
+    nLeaderActions = parse(Int64, parameters[3])
+    nFollowerActions = parse(Int64, parameters[4])
+    nObservations = parse(Int64, parameters[5])
+    nTransitions = parse(Int64, parameters[6])
+    nRewards = parse(Int64, parameters[7])
+    disc = parse(Float64, parameters[8])
+
+    states = Array{State,1}(undef, nStates)
+    partitions = Array{Partition,1}(undef, nPartitions)
+    leaderActions = Array{String,1}(undef, nLeaderActions)
+    followerActions = Array{String,1}(undef, nFollowerActions)
+    observations = Array{String,1}(undef, nObservations)
+    transitions = Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}(undef, nTransitions)
+    rewards = Array{Tuple{Int64,Int64,Int64,Float64},1}(undef, nRewards)
+
+    return Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
+        nObservations, nTransitions, nRewards, disc,
+        states, leaderActions, followerActions, observations,
+        transitions, rewards, partitions)
+end
+
 function Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
     nObservations, nTransitions, nRewards, disc,
     states, leaderActions, followerActions, observations,
     transitions, rewards, partitions)
 
-    minReward = minimum([r[4] for r in rewards])
-    maxReward = maximum([r[4] for r in rewards])
-
     transitionMap = Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}([])
-    for transition in transitions
-        transitionMap[transition[1:5]] = transition[6]
-    end
 
     game = Game(nStates, nPartitions, nLeaderActions, nFollowerActions,
         nObservations, nTransitions, nRewards, disc,
         states, leaderActions, followerActions, observations,
         transitions, rewards, partitions,
-        minReward, maxReward, transitionMap)
-
-    prepare(game)
+        0, 0, transitionMap)
 
     return game
 end
 
-Lmin(game::Game) = game.minReward / (1 - game.disc)
-Umax(game::Game) = game.maxReward / (1 - game.disc)
-lipschitzdelta(game::Game) = (Umax(game) - Lmin(game)) / 2
-
 function prepare(game::Game)
+    game.minReward = minimum([r[4] for r in game.rewards])
+    game.maxReward = maximum([r[4] for r in game.rewards])
+
+    for transition in game.transitions
+        game.transitionMap[transition[1:5]] = transition[6]
+    end
+
     for transition in game.transitions
         s, a1, a2, o, sp, prob = transition
-        partition = game.partitions[game.states[s].partition]
+        partition = game.states[s].partition
 
         if haskey(partition.aoTransitions, (a1, o))
             push!(partition.aoTransitions[(a1, o)], transition)
@@ -74,7 +93,7 @@ function prepare(game::Game)
             partition.transitions[s] = [transition]
         end
 
-        targetPartition = game.states[sp].partition
+        targetPartition = game.states[sp].partitionIndex
         if !haskey(partition.partitionTransitions, (a1, o))
             partition.partitionTransitions[(a1, o)] = targetPartition
         else
@@ -84,7 +103,7 @@ function prepare(game::Game)
 
     for reward in game.rewards
         s, a1, a2, r = reward
-        partition = game.partitions[game.states[s].partition]
+        partition = game.states[s].partition
 
         partition.rewards[(s, a1, a2)] = r
     end
@@ -93,3 +112,9 @@ function prepare(game::Game)
         prepare(partition, game)
     end
 end
+
+Lmin(game::Game) = game.minReward / (1 - game.disc)
+
+Umax(game::Game) = game.maxReward / (1 - game.disc)
+
+lipschitzdelta(game::Game) = (Umax(game) - Lmin(game)) / 2

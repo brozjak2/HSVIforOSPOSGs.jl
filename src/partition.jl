@@ -1,5 +1,5 @@
-mutable struct Partition
-    game
+mutable struct Partition <: AbstractPartition
+    game::AbstractGame
     index::Int64
     states::Array{Int64,1}
     setStates::Set{Int64}
@@ -13,25 +13,24 @@ mutable struct Partition
     transitions::Dict{Int64,Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}
     aoTransitions::Dict{Tuple{Int64,Int64},Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}
     partitionTransitions::Dict{Tuple{Int64,Int64},Int64}
-
-    Partition(index) = new(
-        nothing,
-        index,
-        Array{Int64,1}(undef, 0),
-        Set{Int64}([]),
-        Array{Int64,1}(undef, 0),
-        Dict{Int64,Array{Int64,1}}([]),
-        Dict{Tuple{Int64,Int64,Int64},Float64}([]),
-        Array{Array{Float64,1},1}(undef, 0),
-        Array{Tuple{Array{Float64,1},Float64},1}(undef, 0),
-        Dict{Int64,Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}([]),
-        Dict{Tuple{Int64,Int64},Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}([]),
-        Dict{Tuple{Int64,Int64},Int64}([])
-    )
 end
 
+Partition(game::AbstractGame, index::Int64) = Partition(
+    game,
+    index,
+    Array{Int64,1}(undef, 0),
+    Set{Int64}([]),
+    Array{Int64,1}(undef, 0),
+    Dict{Int64,Array{Int64,1}}([]),
+    Dict{Tuple{Int64,Int64,Int64},Float64}([]),
+    Array{Array{Float64,1},1}(undef, 0),
+    Array{Tuple{Array{Float64,1},Float64},1}(undef, 0),
+    Dict{Int64,Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}([]),
+    Dict{Tuple{Int64,Int64},Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}}([]),
+    Dict{Tuple{Int64,Int64},Int64}([])
+)
+
 function prepare(partition::Partition, game)
-    partition.game = game
     partition.setStates = Set(partition.states)
 
     for (a1, obs) in partition.observations

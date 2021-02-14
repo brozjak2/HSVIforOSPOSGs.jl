@@ -13,7 +13,7 @@ include("state.jl")
 include("partition.jl")
 include("game.jl")
 include("load.jl")
-include("linearPrograms.jl")
+include("linear_programs.jl")
 include("utils.jl")
 
 const global GRB_ENV = Ref{Gurobi.Env}()

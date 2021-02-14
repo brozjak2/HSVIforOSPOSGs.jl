@@ -9,13 +9,13 @@ mutable struct Game <: AbstractGame
 
     disc::Float64
 
-    states::Array{State,1}
-    leader_actions::Array{String,1}
-    follower_actions::Array{String,1}
-    observations::Array{String,1}
-    transitions::Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}
-    rewards::Array{Tuple{Int64,Int64,Int64,Float64},1}
-    partitions::Array{Partition,1}
+    states::Vector{State}
+    leader_actions::Vector{String}
+    follower_actions::Vector{String}
+    observations::Vector{String}
+    transitions::Vector{Tuple{Int64,Int64,Int64,Int64,Int64,Float64}}
+    rewards::Vector{Tuple{Int64,Int64,Int64,Float64}}
+    partitions::Vector{Partition}
 
     minimal_reward::Float64
     maximal_reward::Float64
@@ -33,13 +33,13 @@ function Game(parameters)
     reward_count = parse(Int64, parameters[7])
     disc = parse(Float64, parameters[8])
 
-    states = Array{State,1}(undef, state_count)
-    partitions = Array{Partition,1}(undef, partition_count)
-    leader_actions = Array{String,1}(undef, leader_action_count)
-    follower_actions = Array{String,1}(undef, follower_action_count)
-    observations = Array{String,1}(undef, observation_count)
-    transitions = Array{Tuple{Int64,Int64,Int64,Int64,Int64,Float64},1}(undef, transition_count)
-    rewards = Array{Tuple{Int64,Int64,Int64,Float64},1}(undef, reward_count)
+    states = Vector{State}(undef, state_count)
+    partitions = Vector{Partition}(undef, partition_count)
+    leader_actions = Vector{String}(undef, leader_action_count)
+    follower_actions = Vector{String}(undef, follower_action_count)
+    observations = Vector{String}(undef, observation_count)
+    transitions = Vector{Tuple{Int64,Int64,Int64,Int64,Int64,Float64}}(undef, transition_count)
+    rewards = Vector{Tuple{Int64,Int64,Int64,Float64}}(undef, reward_count)
 
     return Game(state_count, partition_count, leader_action_count, follower_action_count,
         observation_count, transition_count, reward_count, disc,

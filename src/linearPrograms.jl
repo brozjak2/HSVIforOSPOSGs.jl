@@ -1,4 +1,4 @@
-function compute_LB_primal(partition::Partition, belief::Array{Float64,1})
+function compute_LB_primal(partition::Partition, belief::Vector{Float64})
     game = partition.game
 
     LB_primal = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
@@ -41,7 +41,7 @@ function compute_LB_primal(partition::Partition, belief::Array{Float64,1})
     return policy1, policy2_conditional, value.(LB_primal[:statevalue]).data
 end
 
-function compute_UB_dual(partition::Partition, belief::Array{Float64,1})
+function compute_UB_dual(partition::Partition, belief::Vector{Float64})
     game = partition.game
 
     UB_dual = Model(() -> Gurobi.Optimizer(GRB_ENV[]))

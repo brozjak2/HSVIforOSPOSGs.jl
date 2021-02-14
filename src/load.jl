@@ -13,7 +13,7 @@ function load(game_file_path::String)
             partition = game.partitions[partition_index]
             push!(partition.states, i)
             game.states[i] = State(game, i, length(partition.states),
-                name, partition, partition_index, Array{Int64,1}(undef, 0))
+                name, partition, partition_index, Vector{Int64}(undef, 0))
         end
 
         for i = 1:game.leader_action_count

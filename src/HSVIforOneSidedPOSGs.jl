@@ -108,7 +108,7 @@ end
 function solve(
     game::Game,
     init_partition::Partition,
-    init_belief::Array{Float64,1},
+    init_belief::Vector{Float64},
     epsilon::Float64,
     neigh_param_d::Float64,
     start::Float64

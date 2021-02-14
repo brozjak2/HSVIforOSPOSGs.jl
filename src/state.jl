@@ -5,5 +5,5 @@ mutable struct State
     name::String
     partition::AbstractPartition
     partition_index::Int64
-    follower_actions::Array{Int64,1}
+    follower_actions::Vector{Int64}
 end

@@ -32,10 +32,10 @@ function main(
     start = time()
 
     game, init_partition, init_belief = load(game_file_path)
-    @info @sprintf("%7.3fs\tGame loaded", time() - start)
+    @debug @sprintf("%7.3fs\tGame loaded", time() - start)
 
     prepare(game)
-    @info @sprintf("%7.3fs\tGame prepared", time() - start)
+    @debug @sprintf("%7.3fs\tGame prepared", time() - start)
 
     if neigh_param_d <= 0 || neigh_param_d >= (1 - game.disc) * epsilon / (2 * lipschitz_delta(game))
         @warn @sprintf("neighborhood parameter neigh_param_d = %.5f is outside bounds (%.5f, %.5f)",
@@ -43,42 +43,44 @@ function main(
     end
 
     begin
-        @info "GAME:"
-        @info "state_count: $(game.state_count)"
-        @info "partition_count: $(game.partition_count)"
-        @info "leader_action_count: $(game.leader_action_count)"
-        @info "follower_action_count: $(game.follower_action_count)"
-        @info "observation_count: $(game.observation_count)"
-        @info "transition_count: $(game.transition_count)"
-        @info "reward_count: $(game.reward_count)"
-        @info "minimal_reward: $(game.minimal_reward)"
-        @info "maximal_reward: $(game.maximal_reward)"
-        @info "LB_min: $(LB_min(game))"
-        @info "UB_max: $(UB_max(game))"
-        @info "lipschitz_delta: $(lipschitz_delta(game))"
-        @info "neigh_param_d: $neigh_param_d"
-        @info "epsilon: $epsilon"
-        @info "init_partition: $(init_partition.index)"
-        @info "init_belief: $init_belief"
+        @debug "GAME:"
+        @debug "state_count: $(game.state_count)"
+        @debug "partition_count: $(game.partition_count)"
+        @debug "leader_action_count: $(game.leader_action_count)"
+        @debug "follower_action_count: $(game.follower_action_count)"
+        @debug "observation_count: $(game.observation_count)"
+        @debug "transition_count: $(game.transition_count)"
+        @debug "reward_count: $(game.reward_count)"
+        @debug "minimal_reward: $(game.minimal_reward)"
+        @debug "maximal_reward: $(game.maximal_reward)"
+        @debug "LB_min: $(LB_min(game))"
+        @debug "UB_max: $(UB_max(game))"
+        @debug "lipschitz_delta: $(lipschitz_delta(game))"
+        @debug "neigh_param_d: $neigh_param_d"
+        @debug "epsilon: $epsilon"
+        @debug "init_partition: $(init_partition.index)"
+        @debug "init_belief: $init_belief"
     end
 
     presolve_UB(game, presolve_min_delta, presolve_time_limit)
-    @info @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
+    @debug @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
         time() - start,
         UB_value(init_partition, init_belief),
     )
 
     presolve_LB(game, presolve_min_delta, presolve_time_limit)
-    @info @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
+    @debug @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
         time() - start,
         LB_value(init_partition, init_belief),
     )
 
     solve(game, init_partition, init_belief, epsilon, neigh_param_d, start)
-    @info @sprintf("%7.3fs\tGame solved\t%+9.3f",
-        time() - start,
-        width(init_partition, init_belief),
-    )
+    @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
+            time() - start,
+            LB_value(init_partition, init_belief),
+            UB_value(init_partition, init_belief),
+            width(init_partition, init_belief),
+        )
 
     return game, init_partition, init_belief
 end
@@ -117,7 +119,7 @@ function solve(
         global_gamma_size = sum(length(p.gamma) for p in game.partitions)
         global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
-        @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+        @debug @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
             time() - start,
             LB_value(init_partition, init_belief),
             UB_value(init_partition, init_belief),

@@ -65,22 +65,22 @@ function main(
     presolve_UB(game, presolve_min_delta, presolve_time_limit)
     @debug @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
         time() - start,
-        UB_value(init_partition, init_belief),
+        UB_value(init_partition, init_belief)
     )
 
     presolve_LB(game, presolve_min_delta, presolve_time_limit)
     @debug @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
         time() - start,
-        LB_value(init_partition, init_belief),
+        LB_value(init_partition, init_belief)
     )
 
     solve(game, init_partition, init_belief, epsilon, neigh_param_d, start)
     @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
-            time() - start,
-            LB_value(init_partition, init_belief),
-            UB_value(init_partition, init_belief),
-            width(init_partition, init_belief),
-        )
+        time() - start,
+        LB_value(init_partition, init_belief),
+        UB_value(init_partition, init_belief),
+        width(init_partition, init_belief)
+    )
 
     return game, init_partition, init_belief
 end

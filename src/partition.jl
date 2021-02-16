@@ -1,5 +1,4 @@
-mutable struct Partition <: AbstractPartition
-    game::AbstractGame
+mutable struct Partition
     index::Int64
     states::Vector{Int64}
     states_set::Set{Int64}
@@ -15,8 +14,7 @@ mutable struct Partition <: AbstractPartition
     partition_transitions::Dict{Tuple{Int64,Int64},Int64}
 end
 
-Partition(game::AbstractGame, index::Int64) = Partition(
-    game,
+Partition(index::Int64) = Partition(
     index,
     Vector{Int64}(undef, 0),
     Set{Int64}([]),
@@ -30,7 +28,7 @@ Partition(game::AbstractGame, index::Int64) = Partition(
     Dict{Tuple{Int64,Int64},Int64}([])
 )
 
-function prepare(partition::Partition, game)
+function prepare(partition::Partition)
     partition.states_set = Set(partition.states)
 
     for (a1, obs) in partition.observations

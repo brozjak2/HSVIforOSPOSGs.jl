@@ -1,14 +1,5 @@
-mutable struct Game <: AbstractGame
-    state_count::Int64
-    partition_count::Int64
-    leader_action_count::Int64
-    follower_action_count::Int64
-    observation_count::Int64
-    transition_count::Int64
-    reward_count::Int64
-
-    disc::Float64
-
+mutable struct Game
+    discount_factor::Float64
     states::Vector{State}
     leader_actions::Vector{String}
     follower_actions::Vector{String}
@@ -20,57 +11,85 @@ mutable struct Game <: AbstractGame
     minimal_reward::Float64
     maximal_reward::Float64
 
+    reward_map::Dict{Tuple{Int64,Int64,Int64},Float64}
     transition_map::Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}
 end
 
-function Game(parameters)
-    state_count = parse(Int64, parameters[1])
-    partition_count = parse(Int64, parameters[2])
-    leader_action_count = parse(Int64, parameters[3])
-    follower_action_count = parse(Int64, parameters[4])
-    observation_count = parse(Int64, parameters[5])
-    transition_count = parse(Int64, parameters[6])
-    reward_count = parse(Int64, parameters[7])
-    disc = parse(Float64, parameters[8])
+function Game(parsed_game_definition::ParsedGameDefinition)
+    @unpack game_params, states_names, states_partitions, leader_actions_names,
+        follower_actions_names, observations_names, follower_actions, leader_actions,
+        transitions, rewards, init_partition, init_belief = parsed_game_definition
 
-    states = Vector{State}(undef, state_count)
-    partitions = Vector{Partition}(undef, partition_count)
-    leader_actions = Vector{String}(undef, leader_action_count)
-    follower_actions = Vector{String}(undef, follower_action_count)
-    observations = Vector{String}(undef, observation_count)
-    transitions = Vector{Tuple{Int64,Int64,Int64,Int64,Int64,Float64}}(undef, transition_count)
-    rewards = Vector{Tuple{Int64,Int64,Int64,Float64}}(undef, reward_count)
+    minimal_reward = minimum([r.value for r in parsed_game_definition.rewards])
+    maximal_reward = maximum([r.value for r in parsed_game_definition.rewards])
 
-    return Game(state_count, partition_count, leader_action_count, follower_action_count,
-        observation_count, transition_count, reward_count, disc,
-        states, leader_actions, follower_actions, observations,
-        transitions, rewards, partitions)
-end
+    reward_map = Dict([((r.s, r.a1, r.a2), r.v) for r in rewards])
+    transition_map = Dict([((t.s, t.a1, t.a2, t.o, t.sp), t.p) for t in transitions])
 
-function Game(state_count, partition_count, leader_action_count, follower_action_count,
-    observation_count, transition_count, reward_count, disc,
-    states, leader_actions, follower_actions, observations,
-    transitions, rewards, partitions)
+    #TODO: Fix game initialization
 
-    transition_map = Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}([])
+    # for i = 1:length(game.partitions)
+    #     game.partitions[i] = Partition(i)
+    # end
 
-    game = Game(state_count, partition_count, leader_action_count, follower_action_count,
-        observation_count, transition_count, reward_count, disc,
-        states, leader_actions, follower_actions, observations,
-        transitions, rewards, partitions,
-        0, 0, transition_map)
+    # for i = 1:length(game.states)
+    #     name = readuntil(file, ' ')
+    #     partition = parse(Int64, readuntil(file, '\n')) + 1
+    #     partition = game.partitions[partition]
+    #     push!(partition.states, i)
+    #     game.states[i] = State(i, length(partition.states),
+    #         name, partition, Vector{Int64}(undef, 0))
+    # end
+
+    # for i = 1:length(game.states)
+    #     actions = [parse(Int64, x) + 1 for x in split(readline(file), ' ')]
+    #     append!(game.states[i].follower_actions, actions)
+    # end
+
+    # for i = 1:length(game.partitions)
+    #     actions = [parse(Int64, x) + 1 for x in split(readline(file), ' ')]
+    #     append!(game.partitions[i].leader_actions, actions)
+    # end
+
+    # for i = 1:length(game.transitions)
+    #     parsedLine = split(readline(file), ' ')
+    #     parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:5]]
+    #     prob = parse(Float64, parsedLine[6])
+
+    #     game.transitions[i] = (parsedInts..., prob)
+    # end
+
+    # for i = 1:length(game.rewards)
+    #     parsedLine = split(readline(file), ' ')
+    #     parsedInts = [parse(Int64, x) + 1 for x in parsedLine[1:3]]
+    #     reward = parse(Float64, parsedLine[4])
+
+    #     game.rewards[i] = (parsedInts..., reward)
+    # end
+
+    # init_partition = parse(Int64, readuntil(file, ' ')) + 1
+    # init_partition = game.partitions[init_partition]
+    # init_belief = [parse(Float64, x) for x in split(readline(file), ' ')]
+
+    # return game
+
+    states = Vector{State}(undef, game_params.state_count)
+    partitions = Vector{Partition}(undef, game_params.partition_count)
+    leader_actions = Vector{String}(undef, game_params.leader_action_count)
+    follower_actions = Vector{String}(undef, game_params.follower_action_count)
+    observations = Vector{String}(undef, game_params.observation_count)
+    transitions = Vector{Tuple{Int64,Int64,Int64,Int64,Int64,Float64}}(undef, game_params.transition_count)
+    rewards = Vector{Tuple{Int64,Int64,Int64,Float64}}(undef, game_params.reward_count)
+
+    game = Game(disc, states, leader_actions, follower_actions, observations, transitions,
+        rewards, partitions, 0, 0, reward_map, transition_map)
+
+    init!(game)
 
     return game
 end
 
-function prepare(game::Game)
-    game.minimal_reward = minimum([r[4] for r in game.rewards])
-    game.maximal_reward = maximum([r[4] for r in game.rewards])
-
-    for transition in game.transitions
-        game.transition_map[transition[1:5]] = transition[6]
-    end
-
+function init!(game::Game)
     for transition in game.transitions
         s, a1, a2, o, sp, prob = transition
         partition = game.states[s].partition
@@ -93,7 +112,7 @@ function prepare(game::Game)
             partition.transitions[s] = [transition]
         end
 
-        target_partition = game.states[sp].partition_index
+        target_partition = game.states[sp].partition
         if !haskey(partition.partition_transitions, (a1, o))
             partition.partition_transitions[(a1, o)] = target_partition
         elseif partition.partition_transitions[(a1, o)] != target_partition

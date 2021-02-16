@@ -33,7 +33,7 @@ function compute_LB_primal(partition::Partition, belief::Vector{Float64})
     optimize!(LB_primal)
 
     # policy of 2nd player is represented as joint probability in the LPs
-    policy2_conditional = Dict((s, a2) => - val / belief[game.states[s].in_partition_index] for ((s, a2), val) in dual.(LB_primal[:con27b]).data)
+    policy2_conditional = Dict((s, a2) => - val / belief[game.states[s].belief_index] for ((s, a2), val) in dual.(LB_primal[:con27b]).data)
     policy2_conditional = Dict((s, a2) => isinf(val) | isnan(val) ? zero(val) : val for ((s, a2), val) in policy2_conditional)
 
     policy1 = Dict(a1 => value.(LB_primal[:policy1]).data[i] for (i, a1) in enumerate(partition.leader_actions))
@@ -65,12 +65,12 @@ function compute_UB_dual(partition::Partition, belief::Vector{Float64})
 
     # 28d
     @constraint(UB_dual, con28d[a1=partition.leader_actions, o=partition.observations[a1], sp=game.partitions[partition.partition_transitions[(a1, o)]].states],
-        belieftransform[a1, o, game.states[sp].in_partition_index] >= sum(get(game.transition_map, (s, a1, a2, o, sp), 0.0) * policy2[s, a2]
+        belieftransform[a1, o, game.states[sp].belief_index] >= sum(get(game.transition_map, (s, a1, a2, o, sp), 0.0) * policy2[s, a2]
                                        for s in partition.states for a2 in game.states[s].follower_actions))
 
     # 28e
     @constraint(UB_dual, con28e[s=partition.states],
-        sum(policy2[s, a2] for a2 in game.states[s].follower_actions) == belief[game.states[s].in_partition_index])
+        sum(policy2[s, a2] for a2 in game.states[s].follower_actions) == belief[game.states[s].belief_index])
 
     # 36a
     @constraint(UB_dual, con36a[a1=partition.leader_actions, o=partition.observations[a1]],
@@ -96,7 +96,7 @@ function compute_UB_dual(partition::Partition, belief::Vector{Float64})
     optimize!(UB_dual)
 
     # policy of 2nd player is represented as joint probability in the LPs
-    policy2_conditional = Dict((s, a2) => val / belief[game.states[s].in_partition_index] for ((s, a2), val) in value.(UB_dual[:policy2]).data)
+    policy2_conditional = Dict((s, a2) => val / belief[game.states[s].belief_index] for ((s, a2), val) in value.(UB_dual[:policy2]).data)
     policy2_conditional = Dict((s, a2) => isinf(val) | isnan(val) ? zero(val) : val for ((s, a2), val) in policy2_conditional)
 
     policy1 = Dict(a1 => dual.(UB_dual[:con28b]).data[i] for (i, a1) in enumerate(partition.leader_actions))

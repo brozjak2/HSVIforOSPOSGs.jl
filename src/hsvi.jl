@@ -5,18 +5,20 @@ function hsvi(
     presolve_min_delta::Float64,
     presolve_time_limit::Float64
 )
-    start = time()
-    game, init_partition, init_belief = load(game_file_path)
-    prepare(game)
+    params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit)
 
-    check_neigh_param(game, epsilon, neigh_param_d)
+    game = load(game_file_path)
+
+    check_neigh_param(params, game)
+
+    context = Context(params, game)
 
     presolve_UB(game, presolve_min_delta, presolve_time_limit)
     presolve_LB(game, presolve_min_delta, presolve_time_limit)
 
     solve(game, init_partition, init_belief, epsilon, neigh_param_d, start)
     @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
-        time() - start,
+        time() - context.clock_start,
         LB_value(init_partition, init_belief),
         UB_value(init_partition, init_belief),
         width(init_partition, init_belief)
@@ -25,10 +27,16 @@ function hsvi(
     return game, init_partition, init_belief
 end
 
-function check_neigh_param(game::Game, epsilon::Float64, neigh_param_d::Float64)
-    if neigh_param_d <= 0 || neigh_param_d >= (1 - game.disc) * epsilon / (2 * lipschitz_delta(game))
-        @warn @sprintf("neighborhood parameter neigh_param_d = %.5f is outside bounds (%.5f, %.5f)",
-            neigh_param_d, 0, (1 - game.disc) * epsilon / (2 * lipschitz_delta(game)))
+function check_neigh_param(params::Params, game::Game)
+    @unpack epsilon, neigh_param_d = params
+    @unpack disc, lipschitz_delta = game
+
+    upper_limit = (1 - disc) * epsilon / (2 * lipschitz_delta)
+    if neigh_param_d <= 0 || neigh_param_d >= upper_limit
+        @warn @sprintf(
+            "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
+            neigh_param_d, 0, upper_limit
+        )
     end
 end
 

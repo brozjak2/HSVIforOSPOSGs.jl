@@ -10,11 +10,9 @@ export hsvi
 
 include("exceptions.jl")
 include("types.jl")
-include("partition.jl")
-include("game.jl")
-include("context.jl")
-include("linear_programs.jl")
+include("value.jl")
 include("utils.jl")
+include("linear_programs.jl")
 include("hsvi.jl")
 
 const global GRB_ENV = Ref{Gurobi.Env}()

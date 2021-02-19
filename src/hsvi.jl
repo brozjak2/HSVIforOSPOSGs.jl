@@ -9,29 +9,30 @@ function hsvi(
 
     game = load(game_file_path)
 
-    check_neigh_param(params, game)
-
     context = Context(params, game)
 
-    presolve_UB(game, presolve_min_delta, presolve_time_limit)
-    presolve_LB(game, presolve_min_delta, presolve_time_limit)
+    check_neigh_param(context)
 
-    solve(game, init_partition, init_belief, epsilon, neigh_param_d, start)
+    presolve_UB(context)
+    presolve_LB(context)
+
+    solve(context)
     @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
         time() - context.clock_start,
-        LB_value(init_partition, init_belief),
-        UB_value(init_partition, init_belief),
-        width(init_partition, init_belief)
+        LB_value(game),
+        UB_value(game),
+        width(game)
     )
 
-    return game, init_partition, init_belief
+    return context
 end
 
-function check_neigh_param(params::Params, game::Game)
+function check_neigh_param(context::Context)
+    @unpack params, game = context
     @unpack epsilon, neigh_param_d = params
-    @unpack disc, lipschitz_delta = game
+    @unpack discount_factor, lipschitz_delta = game
 
-    upper_limit = (1 - disc) * epsilon / (2 * lipschitz_delta)
+    upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
     if neigh_param_d <= 0 || neigh_param_d >= upper_limit
         @warn @sprintf(
             "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
@@ -40,7 +41,10 @@ function check_neigh_param(params::Params, game::Game)
     end
 end
 
-function presolve_UB(game::Game, presolve_min_delta::Float64, presolve_time_limit::Float64)
+function presolve_UB(context::Context)
+    @unpack params, game = context
+    @unpack presolve_min_delta, presolve_time_limit = params
+
     U = UB_max(game)
 
     for partition in game.partitions
@@ -53,7 +57,10 @@ function presolve_UB(game::Game, presolve_min_delta::Float64, presolve_time_limi
     end
 end
 
-function presolve_LB(game::Game, presolve_min_delta::Float64, presolve_time_limit::Float64)
+function presolve_LB(context::Context)
+    @unpack params, game = context
+    @unpack presolve_min_delta, presolve_time_limit = params
+
     L = LB_min(game)
 
     for partition in game.partitions
@@ -62,16 +69,13 @@ function presolve_LB(game::Game, presolve_min_delta::Float64, presolve_time_limi
     end
 end
 
-function solve(
-    game::Game,
-    init_partition::Partition,
-    init_belief::Vector{Float64},
-    epsilon::Float64,
-    neigh_param_d::Float64,
-    start::Float64
-)
+function solve(context::Context)
+    @unpack params, game = context
+    @unpack epsilon, neigh_param_d = params
+    @unpack init_partition, init_belief = game
+
     while excess(init_partition, init_belief, epsilon) > 0
-        log_progress(game, init_partition, init_belief, start)
+        log_progress(context)
         explore(init_partition, init_belief, epsilon, neigh_param_d)
     end
 
@@ -97,17 +101,16 @@ function explore(partition, belief, rho, neigh_param_d)
     end
 end
 
-function log_progress(game::Game, init_partition::Partition,
-    init_belief::Vector{Float64}, start::Float64
-)
+function log_progress(context::Context)
+    @unpack game, clock_start = context
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
     @debug @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
-        time() - start,
-        LB_value(init_partition, init_belief),
-        UB_value(init_partition, init_belief),
-        width(init_partition, init_belief),
+        time() - clock_start,
+        LB_value(game),
+        UB_value(game),
+        width(game),
         global_gamma_size,
         global_upsilon_size
     )

@@ -15,7 +15,7 @@ function compute_LB_primal(partition::Partition, belief::Vector{Float64})
     # 27b
     @constraint(LB_primal, con27b[s=partition.states, a2=game.states[s].follower_actions],
         statevalue[s] <= sum(policy1[a1] * partition.rewards[s, a1, a2] for a1 in partition.leader_actions)
-                         + game.disc * sum(get(game.transition_map, (s, a1, a2, o, sp), 0.0) * alphavec[a1, o, spi]
+                         + game.discount_factor * sum(get(game.transition_map, (s, a1, a2, o, sp), 0.0) * alphavec[a1, o, spi]
                                            for a1 in partition.leader_actions for o in partition.observations[a1] for (spi, sp) in enumerate(game.partitions[partition.partition_transitions[(a1, o)]].states)))
 
     # 27c
@@ -61,7 +61,7 @@ function compute_UB_dual(partition::Partition, belief::Vector{Float64})
     # 28b
     @constraint(UB_dual, con28b[a1=partition.leader_actions],
         gamevalue >= sum(policy2[s, a2] * partition.rewards[s, a1, a2] for s in partition.states for a2 in game.states[s].follower_actions)
-                     + game.disc * sum(subgamevalue[a1, o] for o in partition.observations[a1]))
+                     + game.discount_factor * sum(subgamevalue[a1, o] for o in partition.observations[a1]))
 
     # 28d
     @constraint(UB_dual, con28d[a1=partition.leader_actions, o=partition.observations[a1], sp=game.partitions[partition.partition_transitions[(a1, o)]].states],
@@ -75,7 +75,7 @@ function compute_UB_dual(partition::Partition, belief::Vector{Float64})
     # 36a
     @constraint(UB_dual, con36a[a1=partition.leader_actions, o=partition.observations[a1]],
         subgamevalue[a1, o] == sum(lambda[a1, o, i] * game.partitions[partition.partition_transitions[(a1, o)]].upsilon[i][2] for i in 1:length(game.partitions[partition.partition_transitions[(a1, o)]].upsilon))
-                               + lipschitz_delta(game) * sum(delta[a1, o, spi] for spi in 1:length(game.partitions[partition.partition_transitions[(a1, o)]].states)))
+                               + game.lipschitz_delta * sum(delta[a1, o, spi] for spi in 1:length(game.partitions[partition.partition_transitions[(a1, o)]].states)))
 
     # 36b
     @constraint(UB_dual, con36b[a1=partition.leader_actions, o=partition.observations[a1], spi=1:length(game.partitions[partition.partition_transitions[(a1, o)]].states)],

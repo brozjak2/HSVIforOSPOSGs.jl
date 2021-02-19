@@ -9,4 +9,10 @@ struct GameParams
     discount_factor::Float64
 end
 
-GameParams(params_string::String) = struct_from_ints_and_floats_string(params_string, GameParams, 8)
+function GameParams(params_string::String)
+    params_strings = split(params_string, ' ')
+    int_params = map((x) -> parse(Int64, x), params_strings[1:7])
+    discount_factor = parse(Float64, params_strings[8])
+
+    return GameParams(int_params..., discount_factor)
+end

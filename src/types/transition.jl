@@ -8,3 +8,5 @@ struct Transition
 end
 
 Transition(params_string::String) = struct_from_indexes_and_float_string(params_string, Transition)
+
+Base.show(io::IO, transition::Transition) = show_struct(io, transition)

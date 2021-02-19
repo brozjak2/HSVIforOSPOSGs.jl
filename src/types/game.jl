@@ -86,6 +86,24 @@ function Game(parsed_game_definition::ParsedGameDefinition)
     return game
 end
 
+function Base.show(io::IO, game::Game)
+    println(io, "Game:")
+    println(io, " state_count = $(length(game.states))")
+    println(io, " partition_count = $(length(game.partitions))")
+    println(io, " leader_action_count = $(length(game.leader_actions_names))")
+    println(io, " follower_action_count = $(length(game.follower_actions_names))")
+    println(io, " observation_count = $(length(game.observations_names))")
+    println(io, " transition_count = $(length(game.transitions))")
+    println(io, " reward_count = $(length(game.rewards))")
+    println(io, " minimal_reward = $(game.minimal_reward)")
+    println(io, " maximal_reward = $(game.maximal_reward)")
+    println(io, " LB_min = $(LB_min(game))")
+    println(io, " UB_max = $(UB_max(game))")
+    println(io, " lipschitz_delta = $(game.lipschitz_delta)")
+    println(io, " init_partition = $(game.init_partition.index)")
+    println(io, " init_belief = $(game.init_belief)")
+end
+
 LB_min(game::Game) = LB_min(game.minimal_reward, game.discount_factor)
 LB_min(minimal_reward::Float64, discount_factor::Float64) = minimal_reward / (1 - discount_factor)
 

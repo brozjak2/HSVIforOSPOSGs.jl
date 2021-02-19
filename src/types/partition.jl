@@ -28,3 +28,7 @@ Partition(game::AbstractGame, index::Int64, states::Vector{Int64}, leader_action
     Dict{Tuple{Int64,Int64},Vector{Transition}}([]),
     Dict{Tuple{Int64,Int64},Int64}([])
 )
+
+function Base.show(io::IO, partition::Partition)
+    print(io, "Partition: $partition.index")
+end

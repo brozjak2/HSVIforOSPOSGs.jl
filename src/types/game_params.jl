@@ -16,3 +16,5 @@ function GameParams(params_string::String)
 
     return GameParams(int_params..., discount_factor)
 end
+
+Base.show(io::IO, game_params::GameParams) = show_struct(io, game_params)

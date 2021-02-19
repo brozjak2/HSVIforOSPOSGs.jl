@@ -6,3 +6,7 @@ struct State
 
     name::String
 end
+
+function Base.show(io::IO, state::State)
+    print(io, "State: $state.index")
+end

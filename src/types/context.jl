@@ -5,6 +5,8 @@ struct Params
     presolve_time_limit::Float64
 end
 
+Base.show(io::IO, params::Params) = show_struct(io, params)
+
 struct Context
     params::Params
     game::Game
@@ -12,3 +14,10 @@ struct Context
 end
 
 Context(params::Params, game::Game) = Context(params, game, time())
+
+function Base.show(io::IO, context::Context)
+    println(io, "Context:")
+    println(io, " $(context.params)")
+    println(io, " $(context.game)")
+    println(io, @sprintf(" running  %7.3fs", time() - context.clock_start))
+end

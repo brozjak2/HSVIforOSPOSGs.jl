@@ -14,9 +14,11 @@ function dictarray_push_or_init(dictarray::Dict{K,Array{V,N}}, key::K, value::V)
     end
 end
 
-function point_based_update(partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64)
-    push!(partition.gamma, alpha)
-    push!(partition.upsilon, (belief, y))
+function show_struct(io::IO, instance::T) where {T}
+    println(io, "$(typeof(instance).name):")
+    for field in fieldnames(typeof(instance))
+        println(io, " $field = $(getfield(instance, field))")
+    end
 end
 
 function load(game_file_path::String)
@@ -25,6 +27,11 @@ function load(game_file_path::String)
     end
 
     return Game(parsed_game_definition)
+end
+
+function point_based_update(partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64)
+    push!(partition.gamma, alpha)
+    push!(partition.upsilon, (belief, y))
 end
 
 function select_ao_pair(partition::Partition, belief::Vector{Float64}, policy1::Dict{Int64,Float64}, policy2::Dict{Tuple{Int64,Int64},Float64}, rho::Float64)

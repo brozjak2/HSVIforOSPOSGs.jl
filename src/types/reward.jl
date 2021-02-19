@@ -6,3 +6,5 @@ struct Reward
 end
 
 Reward(params_string::String) = struct_from_indexes_and_float_string(params_string, Reward)
+
+Base.show(io::IO, reward::Reward) = show_struct(io, reward)

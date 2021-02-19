@@ -6,15 +6,27 @@ function hsvi(
     presolve_time_limit::Float64
 )
     params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit)
+    @debug repr(params)
 
+    clock_start = time()
     game = load(game_file_path)
+    @debug @sprintf("Game from %s loaded and initialized in %7.3fs", game_file_path, time() - clock_start)
+    @debug repr(game)
 
     context = Context(params, game)
 
     check_neigh_param(context)
 
     presolve_UB(context)
+    @debug @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
+        time() - context.clock_start,
+        UB_value(game)
+    )
     presolve_LB(context)
+    @debug @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
+        time() - context.clock_start,
+        LB_value(game)
+    )
 
     solve(context)
     @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
@@ -106,7 +118,7 @@ function log_progress(context::Context)
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
-    @debug @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+    @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
         time() - clock_start,
         LB_value(game),
         UB_value(game),

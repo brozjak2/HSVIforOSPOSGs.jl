@@ -45,6 +45,8 @@ function ParsedGameDefinition(file::IO)
         init_belief)
 end
 
+Base.show(io::IO, parsed_game_definition::ParsedGameDefinition) = show_struct(io, parsed_game_definition)
+
 function parse_states(file::IO, count::Int64)
     states_names = Vector{String}(undef, count)
     states_partitions = Vector{Int64}(undef, count)

@@ -21,6 +21,7 @@ mutable struct Game <: AbstractGame
     observations_names::Vector{String}
 end
 
+# TODO: create game last (after state and partitions); State and Partition have to be mutable anyway so we can assign the game after
 function Game(parsed_game_definition::ParsedGameDefinition)
     @unpack game_params, states_names, states_partitions, leader_actions_names,
         follower_actions_names, observations_names, follower_actions, leader_actions,
@@ -46,7 +47,7 @@ function Game(parsed_game_definition::ParsedGameDefinition)
     for s = 1:state_count
         p = states_partitions[s]
         push!(partitions_states[p], s)
-        game.states[s] = State(s, p, length(partitions_states[p]), follower_actions[s], states_names[s])
+        game.states[s] = State(s, p, length(partitions_states[p]), follower_actions[s], 0, states_names[s])
     end
 
     for p = 1:partition_count
@@ -59,7 +60,7 @@ function Game(parsed_game_definition::ParsedGameDefinition)
         partition = partitions[states[s].partition]
 
         dictarray_push_or_init(partition.ao_pair_transitions, (a1, o), transition)
-        dictarray_push_or_init(partition.transitions, s, transition)
+        dictarray_push_or_init(partition.transitions, (s, a1, a2), transition)
         dictarray_push_or_init(partition.observations, a1, o)
 
         target_partition = states[sp].partition

@@ -57,16 +57,66 @@ function presolve_UB(context::Context)
     @unpack params, game = context
     @unpack presolve_min_delta, presolve_time_limit = params
 
+    clock_start = time()
     U = UB_max(game)
 
-    for partition in game.partitions
-        n = length(partition.states)
-        for i = 1:n
-            belief = zeros(n)
-            belief[i] += 1
-            push!(partition.upsilon, (belief, U))
+    for state in game.states
+        state.presolve_UB_value = U
+    end
+
+    delta = Inf
+    while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
+        delta = 0.0
+
+        for state in game.states
+            prev_value = state.presolve_UB_value
+
+            s = state.index
+            partition = game.partitions[state.partition]
+
+            state_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
+            JuMP.set_optimizer_attribute(state_value_model, "OutputFlag", 0)
+
+            @variable(state_value_model, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0)
+            @variable(state_value_model, presolve_value)
+
+            @objective(state_value_model, Max, presolve_value)
+
+            @constraint(state_value_model, [a2=state.follower_actions],
+                presolve_value <= sum(policy1[a1] * state_value(game, s, a1, a2) for a1 in partition.leader_actions))
+
+            @constraint(state_value_model,
+                sum(policy1[a1] for a1 in partition.leader_actions) == 1)
+
+            optimize!(state_value_model)
+            state.presolve_UB_value = objective_value(state_value_model)
+
+            delta = max(delta, abs(prev_value - state.presolve_UB_value))
         end
     end
+    if delta <= presolve_min_delta
+        @debug "presolve_UB reached desired precision"
+    else
+        @debug "presolve_UB reached time limit"
+    end
+
+    for partition in game.partitions
+        partition_state_count = length(partition.states)
+        for s in partition.states
+            state = game.states[s]
+            belief = zeros(partition_state_count)
+            belief[state.belief_index] = 1
+            push!(partition.upsilon, (belief, state.presolve_UB_value))
+        end
+    end
+end
+
+function state_value(game::Game, s::Int64, a1::Int64, a2::Int64)
+    partition = game.partitions[game.states[s].partition]
+    immediate_reward = game.reward_map[(s, a1, a2)]
+    next_state_values = sum(t.p * game.states[t.sp].presolve_UB_value for t in partition.transitions[(s, a1, a2)])
+
+    return immediate_reward + game.discount_factor * next_state_values
 end
 
 function presolve_LB(context::Context)

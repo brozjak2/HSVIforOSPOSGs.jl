@@ -13,8 +13,6 @@ struct Context
     clock_start::Float64
 end
 
-Context(params::Params, game::Game) = Context(params, game, time())
-
 function Base.show(io::IO, context::Context)
     println(io, "Context:")
     println(io, " $(context.params)")

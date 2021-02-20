@@ -8,12 +8,12 @@ function hsvi(
     params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit)
     @debug repr(params)
 
-    clock_start = time()
+    load_clock_start = time()
     game = load(game_file_path)
-    @debug @sprintf("Game from %s loaded and initialized in %7.3fs", game_file_path, time() - clock_start)
+    @debug @sprintf("Game from %s loaded and initialized in %7.3fs", game_file_path, time() - load_clock_start)
     @debug repr(game)
 
-    context = Context(params, game)
+    context = Context(params, game, time())
 
     check_neigh_param(context)
 
@@ -95,9 +95,9 @@ function presolve_UB(context::Context)
         end
     end
     if delta <= presolve_min_delta
-        @debug "presolve_UB reached desired precision"
+        @debug "presolve_UB reached desired precision $presolve_min_delta"
     else
-        @debug "presolve_UB reached time limit"
+        @debug @sprintf("presolve_UB reached time limit %7.3fs", presolve_time_limit)
     end
 
     for partition in game.partitions

@@ -18,12 +18,12 @@ function hsvi(
     check_neigh_param(context)
 
     presolve_UB(context)
-    @debug @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
+    @info @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
         time() - context.clock_start,
         UB_value(game)
     )
     presolve_LB(context)
-    @debug @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
+    @info @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
         time() - context.clock_start,
         LB_value(game)
     )
@@ -95,7 +95,7 @@ function presolve_UB(context::Context)
         end
     end
     if delta <= presolve_min_delta
-        @debug "presolve_UB reached desired precision $presolve_min_delta"
+        @debug @sprintf("presolve_UB reached desired precision %s in %7.3fs", presolve_min_delta, time() - clock_start)
     else
         @debug @sprintf("presolve_UB reached time limit %7.3fs", presolve_time_limit)
     end
@@ -119,15 +119,39 @@ function state_value(game::Game, s::Int64, a1::Int64, a2::Int64)
     return immediate_reward + game.discount_factor * next_state_values
 end
 
+# TODO: refactor
 function presolve_LB(context::Context)
     @unpack params, game = context
     @unpack presolve_min_delta, presolve_time_limit = params
 
+    clock_start = time()
     L = LB_min(game)
 
     for partition in game.partitions
         n = length(partition.states)
         push!(partition.gamma, fill(L, n))
+    end
+
+    strategies = Vector{Vector{Float64}}(undef, length(game.partitions))
+    for partition in game.partitions
+        leader_action_count = length(partition.leader_actions)
+        strategies[partition.index] = fill(1 / leader_action_count, leader_action_count)
+    end
+
+    delta = Inf
+    while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
+        delta = 0.0
+
+        for partition in game.partitions
+            new_alpha = [minimum(sum(strategies[partition.index][a1i] * (game.reward_map[(s, a1, a2)] + game.discount_factor * sum(t.p * game.partitions[game.states[t.sp].partition].gamma[1][game.states[t.sp].belief_index] for t in partition.transitions[(s, a1, a2)])) for (a1i, a1) in enumerate(partition.leader_actions)) for a2 in game.states[s].follower_actions) for s in partition.states]
+            delta = max(maximum(abs.(partition.gamma[1] - new_alpha)), delta)
+            partition.gamma[1] = new_alpha
+        end
+    end
+    if delta <= presolve_min_delta
+        @debug @sprintf("presolve_LB reached desired precision %s in %7.3fs", presolve_min_delta, time() - clock_start)
+    else
+        @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)
     end
 end
 

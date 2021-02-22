@@ -113,7 +113,7 @@ end
 
 function state_value(game::Game, s::Int64, a1::Int64, a2::Int64)
     partition = game.partitions[game.states[s].partition]
-    immediate_reward = game.reward_map[(s, a1, a2)]
+    immediate_reward = partition.rewards[(s, a1, a2)]
     next_state_values = sum(t.p * game.states[t.sp].presolve_UB_value for t in partition.transitions[(s, a1, a2)])
 
     return immediate_reward + game.discount_factor * next_state_values
@@ -143,7 +143,7 @@ function presolve_LB(context::Context)
         delta = 0.0
 
         for partition in game.partitions
-            new_alpha = [minimum(sum(strategies[partition.index][a1i] * (game.reward_map[(s, a1, a2)] + game.discount_factor * sum(t.p * game.partitions[game.states[t.sp].partition].gamma[1][game.states[t.sp].belief_index] for t in partition.transitions[(s, a1, a2)])) for (a1i, a1) in enumerate(partition.leader_actions)) for a2 in game.states[s].follower_actions) for s in partition.states]
+            new_alpha = [minimum(sum(strategies[partition.index][a1i] * (partition.rewards[(s, a1, a2)] + game.discount_factor * sum(t.p * game.partitions[game.states[t.sp].partition].gamma[1][game.states[t.sp].belief_index] for t in partition.transitions[(s, a1, a2)])) for (a1i, a1) in enumerate(partition.leader_actions)) for a2 in game.states[s].follower_actions) for s in partition.states]
             delta = max(maximum(abs.(partition.gamma[1] - new_alpha)), delta)
             partition.gamma[1] = new_alpha
         end

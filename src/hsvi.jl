@@ -3,9 +3,11 @@ function hsvi(
     epsilon::Float64,
     neigh_param_d::Float64,
     presolve_min_delta::Float64,
-    presolve_time_limit::Float64
+    presolve_time_limit::Float64,
+    qre_lambda::Float64=5.0,
+    qre_epsilon::Float64=1.0e-3
 )
-    params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit)
+    params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda, qre_epsilon)
     @debug repr(params)
 
     load_clock_start = time()
@@ -105,7 +107,7 @@ function presolve_UB(context::Context)
         for s in partition.states
             state = game.states[s]
             belief = zeros(partition_state_count)
-            belief[state.belief_index] = 1
+            belief[state.belief_index] = 1.0
             push!(partition.upsilon, (belief, state.presolve_UB_value))
         end
     end
@@ -162,15 +164,31 @@ function solve(context::Context)
 
     while excess(init_partition, init_belief, epsilon) > 0
         log_progress(context)
-        explore(init_partition, init_belief, epsilon, neigh_param_d)
+        explore(init_partition, init_belief, epsilon, params)
     end
 
     return game
 end
 
-function explore(partition, belief, rho, neigh_param_d)
-    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+function explore(partition, belief, rho, params)
+    @unpack neigh_param_d = params
+    foo, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
     UB_leader_policy, _, y = compute_UB_dual(partition, belief)
+    foo_qre, LB_follower_policy_qre, alpha_qre = compute_LB_qre(partition, belief, params)
+
+    @info("LP:")
+    @info foo
+    @info LB_follower_policy
+    @info alpha
+    @info sum(alpha .* belief)
+
+    @info "QRE($(params.qre_lambda)):"
+    @info foo_qre
+    @info LB_follower_policy_qre
+    @info alpha_qre
+    @info sum(alpha_qre .* belief)
+
+    @info "-------------------------"
 
     point_based_update(partition, belief, alpha, y)
 
@@ -179,7 +197,7 @@ function explore(partition, belief, rho, neigh_param_d)
 
     if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho) > 0
         next_belief = get_next_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
-        explore(next_partition, next_belief, next_rho(rho, partition.game, neigh_param_d), neigh_param_d)
+        explore(next_partition, next_belief, next_rho(rho, partition.game, neigh_param_d), params)
 
         _, _, alpha = compute_LB_primal(partition, belief)
         _, _, y = compute_UB_dual(partition, belief)

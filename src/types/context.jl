@@ -3,6 +3,8 @@ struct Params
     neigh_param_d::Float64
     presolve_min_delta::Float64
     presolve_time_limit::Float64
+    qre_lambda::Float64
+    qre_epsilon::Float64
 end
 
 Base.show(io::IO, params::Params) = show_struct(io, params)

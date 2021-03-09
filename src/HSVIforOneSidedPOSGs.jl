@@ -12,6 +12,7 @@ include("exceptions.jl")
 include("types.jl")
 include("value.jl")
 include("utils.jl")
+include("qre.jl")
 include("linear_programs.jl")
 include("hsvi.jl")
 

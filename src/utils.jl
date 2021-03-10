@@ -34,7 +34,7 @@ function point_based_update(partition::Partition, belief::Vector{Float64}, alpha
     push!(partition.upsilon, (belief, y))
 end
 
-function select_ao_pair(partition::Partition, belief::Vector{Float64}, policy1::Dict{Int64,Float64}, policy2::Dict{Tuple{Int64,Int64},Float64}, rho::Float64)
+function select_ao_pair(partition::Partition, belief::Vector{Float64}, policy1, policy2, rho::Float64)
     weighted_excess_gaps = Dict((a1, o) => weighted_excess(partition, belief, policy1, policy2, a1, o, rho) for a1 in partition.leader_actions for o in partition.observations[a1])
 
     _, (a1, o) = findmax(weighted_excess_gaps)
@@ -42,8 +42,8 @@ function select_ao_pair(partition::Partition, belief::Vector{Float64}, policy1::
     return a1, o
 end
 
-function weighted_excess(partition::Partition, belief::Vector{Float64}, policy1::Dict{Int64,Float64},
-    policy2::Dict{Tuple{Int64,Int64},Float64}, a1::Int64, o::Int64, rho::Float64
+function weighted_excess(partition::Partition, belief::Vector{Float64}, policy1,
+    policy2, a1::Int64, o::Int64, rho::Float64
 )
     @unpack partitions = partition.game
 
@@ -55,9 +55,10 @@ function weighted_excess(partition::Partition, belief::Vector{Float64}, policy1:
 end
 
 function get_next_belief(partition::Partition, belief::Vector{Float64},
-    policy1::Dict{Int64,Float64}, policy2::Dict{Tuple{Int64,Int64},Float64}, a1::Int64, o::Int64
+    policy1, policy2, a1::Int64, o::Int64
 )
-    @unpack states, partitions = partition.game
+    game = partition.game
+    @unpack states, partitions, sm = game
 
     ao_inverse_prob = 1 / ao_pair_probability(partition, belief, policy1, policy2, a1, o)
     ao_inverse_prob = isinf(ao_inverse_prob) ? zero(ao_inverse_prob) : ao_inverse_prob # handle division by zero
@@ -65,18 +66,19 @@ function get_next_belief(partition::Partition, belief::Vector{Float64},
     target_partition = partitions[partition.partition_transitions[(a1, o)]]
     target_belief = zeros(length(target_partition.states))
     for t in partition.ao_pair_transitions[(a1, o)]
-        target_belief[states[t.sp].belief_index] += belief[states[t.s].belief_index] * policy1[a1] * policy2[(t.s, t.a2)] * t.p
+        target_belief[sm[t.sp]] += belief[sm[t.s]] * policy1[partition.a1m[a1]] * policy2[sm[t.s]][states[t.s].a2m[t.a2]] * t.p
     end
 
     return ao_inverse_prob * target_belief
 end
 
 function ao_pair_probability(partition::Partition, belief::Vector{Float64},
-    policy1::Dict{Int64,Float64}, policy2::Dict{Tuple{Int64,Int64},Float64}, a1::Int64, o::Int64
+    policy1, policy2, a1::Int64, o::Int64
 )
-    @unpack states = partition.game
+    game = partition.game
+    @unpack states, sm = game
 
-    return sum(belief[states[t.s].belief_index] * policy1[a1] * policy2[(t.s, t.a2)] * t.p
+    return sum(belief[sm[t.s]] * policy1[partition.a1m[a1]] * policy2[sm[t.s]][states[t.s].a2m[t.a2]] * t.p
                for t in partition.ao_pair_transitions[(a1, o)])
 end
 

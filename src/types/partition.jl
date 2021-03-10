@@ -3,6 +3,7 @@ struct Partition
     index::Int64
     states::Vector{Int64}
     leader_actions::Vector{Int64}
+    a1m::Dict{Int64,Int64}
 
     observations::Dict{Int64,Vector{Int64}}
     rewards::Dict{Tuple{Int64,Int64,Int64},Float64}
@@ -15,11 +16,12 @@ struct Partition
     partition_transitions::Dict{Tuple{Int64,Int64},Int64}
 end
 
-Partition(game::AbstractGame, index::Int64, states::Vector{Int64}, leader_actions::Vector{Int64}) = Partition(
+Partition(game::AbstractGame, index::Int64, states::Vector{Int64}, leader_actions::Vector{Int64}, leader_actions_map::Dict{Int64,Int64}) = Partition(
     game,
     index,
     states,
     leader_actions,
+    leader_actions_map,
     Dict{Tuple{Int64,Int64,Int64},Vector{Int64}}([]),
     Dict{Tuple{Int64,Int64,Int64},Float64}([]),
     Vector{Vector{Float64}}(undef, 0),

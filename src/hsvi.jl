@@ -172,22 +172,29 @@ end
 
 function explore(partition, belief, rho, params)
     @unpack neigh_param_d = params
-    foo, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    UB_leader_policy, _, y = compute_UB_dual(partition, belief)
-    foo_qre, LB_follower_policy_qre, alpha_qre = compute_LB_qre(partition, belief, params)
+    LB_leader_policy, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    UB_leader_policy, UB_follower_policy, y = compute_UB_dual(partition, belief)
+    LB_leader_policy_qre, LB_follower_policy_qre, alpha_qre = compute_LB_qre(partition, belief, params)
+    UB_leader_policy_qre, UB_follower_policy_qre, y_qre = compute_UB_qre(partition, belief, params)
 
-    @info("LP:")
-    @info foo
-    @info LB_follower_policy
-    @info alpha
-    @info sum(alpha .* belief)
-
-    @info "QRE($(params.qre_lambda)):"
-    @info foo_qre
-    @info LB_follower_policy_qre
-    @info alpha_qre
-    @info sum(alpha_qre .* belief)
-
+    @info("LB:")
+    @info("  LP:")
+    @info "    $(LB_leader_policy)"
+    @info "    $(LB_follower_policy)"
+    @info "    $(sum(alpha .* belief))"
+    @info "  QRE($(params.qre_lambda)):"
+    @info "    $(LB_leader_policy_qre)"
+    @info "    $(LB_follower_policy_qre)"
+    @info "    $(sum(alpha_qre .* belief))"
+    @info("UB:")
+    @info("  LP:")
+    @info "    $(UB_leader_policy)"
+    @info "    $(UB_follower_policy)"
+    @info "    $(y)"
+    @info "  QRE($(params.qre_lambda)):"
+    @info "    $(UB_leader_policy_qre)"
+    @info "    $(UB_follower_policy_qre)"
+    @info "    $(y_qre)"
     @info "-------------------------"
 
     point_based_update(partition, belief, alpha, y)

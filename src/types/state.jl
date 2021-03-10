@@ -3,6 +3,7 @@ mutable struct State
     partition::Int64
     belief_index::Int64
     follower_actions::Vector{Int64}
+    a2m::Dict{Int64,Int64}
 
     presolve_UB_value::Float64
 

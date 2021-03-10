@@ -9,6 +9,7 @@ mutable struct Game <: AbstractGame
 
     transitions::Vector{Transition}
     transition_map::Dict{Tuple{Int64,Int64,Int64,Int64,Int64},Float64}
+    sm::Vector{Int64}
 
     rewards::Vector{Reward}
 
@@ -33,11 +34,12 @@ function Game(parsed_game_definition::ParsedGameDefinition)
     lipschitz_delta = (UB_max(maximal_reward, discount_factor) - LB_min(minimal_reward, discount_factor)) / 2
 
     transition_map = Dict([((t.s, t.a1, t.a2, t.o, t.sp), t.p) for t in transitions])
+    sm = zeros(Int64, state_count)
 
     states = Vector{State}(undef, state_count)
     partitions = Vector{Partition}(undef, partition_count)
     game = Game(discount_factor, states, partitions, lipschitz_delta, nothing,
-        init_belief, transitions, transition_map, rewards, minimal_reward, maximal_reward,
+        init_belief, transitions, transition_map, sm, rewards, minimal_reward, maximal_reward,
         leader_actions_names, follower_actions_names, observations_names)
 
     partitions_states = [Vector{Int64}([]) for i = 1:partition_count]
@@ -45,11 +47,14 @@ function Game(parsed_game_definition::ParsedGameDefinition)
     for s = 1:state_count
         p = states_partitions[s]
         push!(partitions_states[p], s)
-        game.states[s] = State(s, p, length(partitions_states[p]), follower_actions[s], 0, states_names[s])
+        follower_actions_map = Dict(a2 => a2i for (a2i, a2) in enumerate(follower_actions[s]))
+        game.states[s] = State(s, p, length(partitions_states[p]), follower_actions[s], follower_actions_map, 0, states_names[s])
+        sm[s] = length(partitions_states[p])
     end
 
     for p = 1:partition_count
-        game.partitions[p] = Partition(game, p, partitions_states[p], leader_actions[p])
+        leader_actions_map = Dict(a1 => a1i for (a1i, a1) in enumerate(leader_actions[p]))
+        game.partitions[p] = Partition(game, p, partitions_states[p], leader_actions[p], leader_actions_map)
     end
     game.init_partition = game.partitions[init_partition_index]
 

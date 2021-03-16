@@ -1,37 +1,41 @@
 function hsvi(
-    game_file_path::String,
-    epsilon::Float64,
-    neigh_param_d::Float64,
-    presolve_min_delta::Float64,
-    presolve_time_limit::Float64,
-    qre_lambda::Float64=5.0,
-    qre_epsilon::Float64=1.0e-3
+    game_file_path::String, epsilon::Float64;
+    neigh_param_d::Float64 = 1.0e-6,
+    presolve_min_delta::Float64 = 0.001,
+    presolve_time_limit::Float64 = 60.0,
+    qre_lambda::Float64 = 5.0,
+    qre_epsilon::Float64 = 0.001,
+    qre_iter_limit::Int64 = 1000
 )
-    params = Params(epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda, qre_epsilon)
-    @debug repr(params)
+    params = Params(
+        epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda,
+        qre_epsilon, qre_iter_limit
+    )
+    @debug params
 
-    load_clock_start = time()
     game = load(game_file_path)
-    @debug @sprintf("Game from %s loaded and initialized in %7.3fs", game_file_path, time() - load_clock_start)
-    @debug repr(game)
+    @debug "Game loaded from $game_file_path"
+    @debug game
 
     context = Context(params, game, time())
-
     check_neigh_param(context)
 
     presolve_UB(context)
-    @info @sprintf("%7.3fs\tpresolveUB\t%+9.3f",
+    @info @sprintf(
+        "%7.3fs\tpresolveUB\t%+9.3f",
         time() - context.clock_start,
         UB_value(game)
     )
     presolve_LB(context)
-    @info @sprintf("%7.3fs\tpresolveLB\t%+9.3f",
+    @info @sprintf(
+        "%7.3fs\tpresolveLB\t%+9.3f",
         time() - context.clock_start,
         LB_value(game)
     )
 
     solve(context)
-    @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
+    @info @sprintf(
+        "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
         time() - context.clock_start,
         LB_value(game),
         UB_value(game),
@@ -47,22 +51,24 @@ function check_neigh_param(context::Context)
     @unpack discount_factor, lipschitz_delta = game
 
     upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
-    if neigh_param_d <= 0 || neigh_param_d >= upper_limit
-        @warn @sprintf(
+    if !(0 <= neigh_param_d <= upper_limit)
+        msg =  @sprintf(
             "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
             neigh_param_d, 0, upper_limit
         )
+        @warn msg
     end
 end
 
 function presolve_UB(context::Context)
     @unpack params, game = context
     @unpack presolve_min_delta, presolve_time_limit = params
+    @unpack partitions, states = game
 
     clock_start = time()
     U = UB_max(game)
 
-    for state in game.states
+    for state in states
         state.presolve_UB_value = U
     end
 
@@ -70,11 +76,11 @@ function presolve_UB(context::Context)
     while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
         delta = 0.0
 
-        for state in game.states
+        for state in states
             prev_value = state.presolve_UB_value
 
             s = state.index
-            partition = game.partitions[state.partition]
+            partition = partitions[state.partition]
 
             state_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
             JuMP.set_optimizer_attribute(state_value_model, "OutputFlag", 0)
@@ -97,15 +103,18 @@ function presolve_UB(context::Context)
         end
     end
     if delta <= presolve_min_delta
-        @debug @sprintf("presolve_UB reached desired precision %s in %7.3fs", presolve_min_delta, time() - clock_start)
+        @debug @sprintf(
+            "presolve_UB reached desired precision %s in %7.3fs",
+            presolve_min_delta, time() - clock_start
+        )
     else
         @debug @sprintf("presolve_UB reached time limit %7.3fs", presolve_time_limit)
     end
 
-    for partition in game.partitions
+    for partition in partitions
         partition_state_count = length(partition.states)
         for s in partition.states
-            state = game.states[s]
+            state = states[s]
             belief = zeros(partition_state_count)
             belief[state.belief_index] = 1.0
             push!(partition.upsilon, (belief, state.presolve_UB_value))
@@ -114,28 +123,30 @@ function presolve_UB(context::Context)
 end
 
 function state_value(game::Game, s::Int64, a1::Int64, a2::Int64)
-    partition = game.partitions[game.states[s].partition]
-    immediate_reward = partition.rewards[(s, a1, a2)]
-    next_state_values = sum(t.p * game.states[t.sp].presolve_UB_value for t in partition.transitions[(s, a1, a2)])
+    @unpack partitions, states, discount_factor = game
 
-    return immediate_reward + game.discount_factor * next_state_values
+    partition = partitions[states[s].partition]
+    immediate_reward = partition.rewards[(s, a1, a2)]
+    exp_transition_value = sum(t.p * states[t.sp].presolve_UB_value for t in partition.transitions[(s, a1, a2)])
+
+    return immediate_reward + discount_factor * exp_transition_value
 end
 
-# TODO: refactor
 function presolve_LB(context::Context)
     @unpack params, game = context
     @unpack presolve_min_delta, presolve_time_limit = params
+    @unpack partitions, states, discount_factor = game
 
     clock_start = time()
     L = LB_min(game)
 
-    for partition in game.partitions
+    for partition in partitions
         n = length(partition.states)
         push!(partition.gamma, fill(L, n))
     end
 
-    strategies = Vector{Vector{Float64}}(undef, length(game.partitions))
-    for partition in game.partitions
+    strategies = Vector{Vector{Float64}}(undef, length(partitions))
+    for partition in partitions
         leader_action_count = length(partition.leader_actions)
         strategies[partition.index] = fill(1 / leader_action_count, leader_action_count)
     end
@@ -144,14 +155,44 @@ function presolve_LB(context::Context)
     while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
         delta = 0.0
 
-        for partition in game.partitions
-            new_alpha = [minimum(sum(strategies[partition.index][a1i] * (partition.rewards[(s, a1, a2)] + game.discount_factor * sum(t.p * game.partitions[game.states[t.sp].partition].gamma[1][game.states[t.sp].belief_index] for t in partition.transitions[(s, a1, a2)])) for (a1i, a1) in enumerate(partition.leader_actions)) for a2 in game.states[s].follower_actions) for s in partition.states]
+        for partition in partitions
+            new_alpha = zeros(length(partition.states))
+            a1it = partition.leader_action_index_table
+
+            for s in partition.states
+                state = states[s]
+
+                new_state_value = Inf
+                for a2 in state.follower_actions
+
+                    a2_value = 0
+                    for a1 in partition.leader_actions
+
+                        a1_value = partition.rewards[(s, a1, a2)]
+                        for t in partition.transitions[(s, a1, a2)]
+                            target_partition = partitions[states[t.sp].partition]
+                            target_belief_index = states[t.sp].belief_index
+                            a1_value += discount_factor * t.p * target_partition.gamma[1][target_belief_index]
+                        end
+
+                        a2_value += strategies[partition.index][a1it[a1]] * a1_value
+                    end
+
+                    new_state_value = min(new_state_value, a2_value)
+                end
+
+                new_alpha[state.belief_index] = new_state_value
+            end
+
             delta = max(maximum(abs.(partition.gamma[1] - new_alpha)), delta)
             partition.gamma[1] = new_alpha
         end
     end
     if delta <= presolve_min_delta
-        @debug @sprintf("presolve_LB reached desired precision %s in %7.3fs", presolve_min_delta, time() - clock_start)
+        @debug @sprintf(
+            "presolve_LB reached desired precision %s in %7.3fs",
+            presolve_min_delta, time() - clock_start
+        )
     else
         @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)
     end
@@ -170,41 +211,21 @@ function solve(context::Context)
     return game
 end
 
-function explore(partition, belief, rho, params)
+function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, params::Params)
     @unpack neigh_param_d = params
+    @unpack game = partition
+
     LB_leader_policy, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
     UB_leader_policy, UB_follower_policy, y = compute_UB_dual(partition, belief)
-    LB_leader_policy_qre, LB_follower_policy_qre, alpha_qre = compute_LB_qre(partition, belief, params)
-    UB_leader_policy_qre, UB_follower_policy_qre, y_qre = compute_UB_qre(partition, belief, params)
-
-    @info("LB:")
-    @info("  LP:")
-    @info "    $(LB_leader_policy)"
-    @info "    $(LB_follower_policy)"
-    @info "    $(sum(alpha .* belief))"
-    @info "  QRE($(params.qre_lambda)):"
-    @info "    $(LB_leader_policy_qre)"
-    @info "    $(LB_follower_policy_qre)"
-    @info "    $(sum(alpha_qre .* belief))"
-    @info("UB:")
-    @info("  LP:")
-    @info "    $(UB_leader_policy)"
-    @info "    $(UB_follower_policy)"
-    @info "    $(y)"
-    @info "  QRE($(params.qre_lambda)):"
-    @info "    $(UB_leader_policy_qre)"
-    @info "    $(UB_follower_policy_qre)"
-    @info "    $(y_qre)"
-    @info "-------------------------"
 
     point_based_update(partition, belief, alpha, y)
 
     a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
-    next_partition = partition.game.partitions[partition.partition_transitions[(a1, o)]]
+    target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
 
     if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho) > 0
-        next_belief = get_next_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
-        explore(next_partition, next_belief, next_rho(rho, partition.game, neigh_param_d), params)
+        target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
+        explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params)
 
         _, _, alpha = compute_LB_primal(partition, belief)
         _, _, y = compute_UB_dual(partition, belief)
@@ -217,7 +238,8 @@ function log_progress(context::Context)
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
-    @info @sprintf("%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+    @info @sprintf(
+        "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
         time() - clock_start,
         LB_value(game),
         UB_value(game),

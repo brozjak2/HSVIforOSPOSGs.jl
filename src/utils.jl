@@ -1,64 +1,43 @@
-function struct_from_indexes_and_float_string(params_string::String, type::Type)
-    params_strings = split(params_string, ' ')
-    index_params = map((x) -> parse(Int64, x) + 1, params_strings[1:end - 1])
-    float_param = parse(Float64, params_strings[end])
-
-    return type(index_params..., float_param)
-end
-
-function dictarray_push_or_init(dictarray::Dict{K,Array{V,N}}, key::K, value::V) where {K,V,N}
-    if haskey(dictarray, key)
-        push!(dictarray[key], value)
-    else
-        dictarray[key] = [value]
-    end
-end
-
-function show_struct(io::IO, instance::T) where {T}
-    println(io, "$(typeof(instance).name):")
-    for field in fieldnames(typeof(instance))
-        println(io, " $field = $(getfield(instance, field))")
-    end
-end
-
-function load(game_file_path::String)
-    parsed_game_definition = open(game_file_path) do file
-        return ParsedGameDefinition(file)
-    end
-
-    return Game(parsed_game_definition)
-end
-
-function point_based_update(partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64)
+function point_based_update(
+    partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64
+)
     push!(partition.gamma, alpha)
     push!(partition.upsilon, (belief, y))
 end
 
-function select_ao_pair(partition::Partition, belief::Vector{Float64}, policy1, policy2, rho::Float64)
-    weighted_excess_gaps = Dict((a1, o) => weighted_excess(partition, belief, policy1, policy2, a1, o, rho) for a1 in partition.leader_actions for o in partition.observations[a1])
+function select_ao_pair(
+    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
+    policy2::Vector{Vector{Float64}}, rho::Float64
+)
+    weighted_excess_gaps = Dict([])
+    for a1 in partition.leader_actions, o in partition.observations[a1]
+        weighted_excess_gaps[(a1, o)] = weighted_excess(partition, belief, policy1, policy2, a1, o, rho)
+    end
 
     _, (a1, o) = findmax(weighted_excess_gaps)
 
     return a1, o
 end
 
-function weighted_excess(partition::Partition, belief::Vector{Float64}, policy1,
-    policy2, a1::Int64, o::Int64, rho::Float64
+function weighted_excess(
+    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
+    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64, rho::Float64
 )
     @unpack partitions = partition.game
 
-    next_belief = get_next_belief(partition, belief, policy1, policy2, a1, o)
-    next_partition = partitions[partition.partition_transitions[(a1, o)]]
+    target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o)
+    target_partition = partitions[partition.partition_transitions[(a1, o)]]
 
     return (ao_pair_probability(partition, belief, policy1, policy2, a1, o)
-           * excess(next_partition, next_belief, rho))
+           * excess(target_partition, target_belief, rho))
 end
 
-function get_next_belief(partition::Partition, belief::Vector{Float64},
-    policy1, policy2, a1::Int64, o::Int64
+function get_target_belief(
+    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
+    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64
 )
-    game = partition.game
-    @unpack states, partitions, sm = game
+    @unpack game = partition
+    @unpack states, partitions, state_index_table = game
 
     ao_inverse_prob = 1 / ao_pair_probability(partition, belief, policy1, policy2, a1, o)
     ao_inverse_prob = isinf(ao_inverse_prob) ? zero(ao_inverse_prob) : ao_inverse_prob # handle division by zero
@@ -66,20 +45,35 @@ function get_next_belief(partition::Partition, belief::Vector{Float64},
     target_partition = partitions[partition.partition_transitions[(a1, o)]]
     target_belief = zeros(length(target_partition.states))
     for t in partition.ao_pair_transitions[(a1, o)]
-        target_belief[sm[t.sp]] += belief[sm[t.s]] * policy1[partition.a1m[a1]] * policy2[sm[t.s]][states[t.s].a2m[t.a2]] * t.p
+        a1_index = partition.leader_action_index_table[a1]
+        a2_index = states[t.s].follower_action_index_table[t.a2]
+
+        s_index = state_index_table[t.s]
+        sp_index = state_index_table[t.sp]
+        target_belief[sp_index] += belief[s_index] * policy1[a1_index] * policy2[s_index][a2_index] * t.p
     end
 
     return ao_inverse_prob * target_belief
 end
 
-function ao_pair_probability(partition::Partition, belief::Vector{Float64},
-    policy1, policy2, a1::Int64, o::Int64
+function ao_pair_probability(
+    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
+    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64
 )
-    game = partition.game
-    @unpack states, sm = game
+    @unpack game = partition
+    @unpack states, state_index_table = game
 
-    return sum(belief[sm[t.s]] * policy1[partition.a1m[a1]] * policy2[sm[t.s]][states[t.s].a2m[t.a2]] * t.p
-               for t in partition.ao_pair_transitions[(a1, o)])
+    ao_pair_probability = 0
+    for t in partition.ao_pair_transitions[(a1, o)]
+        a1_index = partition.leader_action_index_table[a1]
+        a2_index = states[t.s].follower_action_index_table[t.a2]
+
+        s_index = state_index_table[t.s]
+        sp_index = state_index_table[t.sp]
+        ao_pair_probability += belief[s_index] * policy1[a1_index] * policy2[s_index][a2_index] * t.p
+    end
+
+    return ao_pair_probability
 end
 
 function excess(partition::Partition, belief::Vector{Float64}, rho::Float64)

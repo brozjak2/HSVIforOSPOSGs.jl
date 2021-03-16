@@ -7,6 +7,8 @@ end
 UB_value(game::Game) = UB_value(game.init_partition, game.init_belief)
 
 function UB_value(partition::Partition, belief::Vector{Float64})
+    @unpack lipschitz_delta = partition.game
+
     upsilon_size = length(partition.upsilon)
     state_count = length(partition.states)
 
@@ -18,8 +20,10 @@ function UB_value(partition::Partition, belief::Vector{Float64})
     @variable(UB_value_model, beliefp[si=1:state_count])
 
     # 33a
-    @objective(UB_value_model, Min, sum(lambda[i] * partition.upsilon[i][2] for i in 1:upsilon_size)
-                               + partition.game.lipschitz_delta * sum(delta[si] for si in 1:state_count))
+    @objective(UB_value_model, Min,
+        sum(lambda[i] * partition.upsilon[i][2] for i in 1:upsilon_size)
+        + lipschitz_delta * sum(delta[si] for si in 1:state_count)
+    )
 
     # 33b
     @constraint(UB_value_model, con33b[si=1:state_count],

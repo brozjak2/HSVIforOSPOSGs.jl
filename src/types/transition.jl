@@ -7,6 +7,17 @@ struct Transition
     p::Float64 # probability
 end
 
-Transition(params_string::String) = struct_from_indexes_and_float_string(params_string, Transition)
+function Transition(transition_string::String)
+    transition_strings = split(transition_string, ' ')
+    indexes = map((x) -> parse(Int64, x) + 1, transition_strings[1:5])
+    probability = parse(Float64, transition_strings[6])
 
-Base.show(io::IO, transition::Transition) = show_struct(io, transition)
+    return Transition(indexes..., probability)
+end
+
+function Base.show(io::IO, transition::Transition)
+    println(io, "Transition:")
+    for field in fieldnames(Transition)
+        println(io, "  $field = $(getfield(transition, field))")
+    end
+end

@@ -203,20 +203,25 @@ function solve(context::Context)
     @unpack epsilon, neigh_param_d = params
     @unpack init_partition, init_belief = game
 
+    iteration = 0
     while excess(init_partition, init_belief, epsilon) > 0
-        log_progress(context)
-        explore(init_partition, init_belief, epsilon, params)
+        log_progress(context, iteration)
+        explore(init_partition, init_belief, epsilon, params, 0)
+
+        iteration += 1;
     end
 
     return game
 end
 
-function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, params::Params)
+function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, params::Params, depth::Int64)
     @unpack neigh_param_d = params
     @unpack game = partition
 
-    LB_leader_policy, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    UB_leader_policy, UB_follower_policy, y = compute_UB_dual(partition, belief)
+    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
+    # _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
+    # UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
 
     point_based_update(partition, belief, alpha, y)
 
@@ -225,21 +230,24 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
 
     if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho) > 0
         target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
-        explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params)
+        explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params, depth + 1)
 
         _, _, alpha = compute_LB_primal(partition, belief)
         _, _, y = compute_UB_dual(partition, belief)
         point_based_update(partition, belief, alpha, y)
+    else
+        @debug "max depth: $depth"
     end
 end
 
-function log_progress(context::Context)
+function log_progress(context::Context, iteration::Int64)
     @unpack game, clock_start = context
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
     @info @sprintf(
-        "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+        "%4d: %7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+        iteration,
         time() - clock_start,
         LB_value(game),
         UB_value(game),

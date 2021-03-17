@@ -111,6 +111,7 @@ end
 
 function Base.show(io::IO, game::Game)
     println(io, "Game:")
+    println(io, "  discount_factor = $(game.discount_factor)")
     println(io, "  state_count = $(length(game.states))")
     println(io, "  partition_count = $(length(game.partitions))")
     println(io, "  leader_action_count = $(length(game.leader_actions_names))")

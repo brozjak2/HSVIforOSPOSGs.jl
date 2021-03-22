@@ -3,9 +3,9 @@ function hsvi(
     neigh_param_d::Float64 = 1.0e-6,
     presolve_min_delta::Float64 = 0.001,
     presolve_time_limit::Float64 = 60.0,
-    qre_lambda::Float64 = 5.0,
+    qre_lambda::Float64 = 10.0,
     qre_epsilon::Float64 = 0.001,
-    qre_iter_limit::Int64 = 1000
+    qre_iter_limit::Int64 = 10000
 )
     params = Params(
         epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda,
@@ -22,20 +22,20 @@ function hsvi(
 
     presolve_UB(context)
     @info @sprintf(
-        "%7.3fs\tpresolveUB\t%+9.3f",
+        "%7.3fs\tpresolveUB\t%+7.5f",
         time() - context.clock_start,
         UB_value(game)
     )
     presolve_LB(context)
     @info @sprintf(
-        "%7.3fs\tpresolveLB\t%+9.3f",
+        "%7.3fs\tpresolveLB\t%+7.5f",
         time() - context.clock_start,
         LB_value(game)
     )
 
     solve(context)
     @info @sprintf(
-        "%7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\tGame solved",
+        "%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\tGame solved",
         time() - context.clock_start,
         LB_value(game),
         UB_value(game),
@@ -223,6 +223,14 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     # _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
     # UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
 
+    _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
+    qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
+    @debug "-------------------------------"
+    @debug "belief: $belief"
+    @debug "LP vs. QRE(λ=$(params.qre_lambda))"
+    @debug "y: $y vs. $qre_y"
+    @debug "aplha: $alpha vs. $qre_alpha"
+
     point_based_update(partition, belief, alpha, y)
 
     a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
@@ -246,7 +254,7 @@ function log_progress(context::Context, iteration::Int64)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
     @info @sprintf(
-        "%4d: %7.3fs\t%+9.3f\t%+9.3f\t%+9.3f\t%5d\t%5d",
+        "%4d:\t%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\t%5d\t%5d",
         iteration,
         time() - clock_start,
         LB_value(game),

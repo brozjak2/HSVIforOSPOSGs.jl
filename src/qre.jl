@@ -44,6 +44,10 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
         t += 1
     end
 
+    if t > qre_iter_limit
+        @warn "QRE iteration limit $qre_iter_limit exceeded!"
+    end
+
     states_values = [sum(policy1_new[a1i] * policy2_new[si][a2i] * reward_table[(s, a1, a2)]
         for (a1i, a1) in enumerate(partition.leader_actions) for (a2i, a2) in enumerate(states[s].follower_actions)) for (si, s) in enumerate(partition.states)]
 

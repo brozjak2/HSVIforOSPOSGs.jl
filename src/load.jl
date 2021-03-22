@@ -16,6 +16,10 @@ function load(game_file_path::String)
         transitions = parse_transitions(file, transition_count)
 
         rewards = parse_rewards(file, reward_count)
+        min_r = minimum([r.r for r in rewards])
+        max_r = maximum([r.r for r in rewards])
+        normalize(r) = (r - min_r) / (max_r - min_r)
+        rewards = [Reward(r.s, r.a1, r.a2, normalize(r.r)) for r in rewards]
 
         init_partition_index = parse(Int64, readuntil(file, ' ')) + 1
         init_belief = [parse(Float64, x) for x in split(readline(file), ' ')]

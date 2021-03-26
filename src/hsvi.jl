@@ -218,18 +218,102 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     @unpack neigh_param_d = params
     @unpack game = partition
 
-    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
-    # _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
-    # UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+    # _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    # UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
+    _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
+    UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+    # _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
+    # qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
 
-    _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
-    qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
-    @debug "-------------------------------"
-    @debug "belief: $belief"
-    @debug "LP vs. QRE(λ=$(params.qre_lambda))"
-    @debug "y: $y vs. $qre_y"
-    @debug "aplha: $alpha vs. $qre_alpha"
+    # @debug "-------------------------------"
+    # @debug "depth: $depth"
+    # @debug "belief: $belief"
+    # @debug "LP vs. QRE(λ=$(params.qre_lambda))"
+    # @debug "y:"
+    # @debug "LP: $y"
+    # @debug "QRE: $qre_y"
+    # @debug "alpha:"
+    # @debug "LP: $alpha"
+    # @debug "QRE: $qre_alpha"
+    # @debug "UB_leader_policy:"
+    # @debug "LP: $UB_leader_policy"
+    # @debug "QRE: $qre_UB_leader_policy"
+    # @debug "LB_follower_policy:"
+    # @debug "LP: $LB_follower_policy"
+    # @debug "QRE: $qre_LB_follower_policy"
+
+    # # TODO: Plot QRE-computed values depending on qre_lambda
+    # xlim = (1, 500)
+    # from, to = xlim
+    # discretization = 50
+    # lambdas = 10 .^ range(log10(from), log10(to); length=discretization)
+
+    # data = nothing
+    # @showprogress 1 "QRE: " for lambda in lambdas
+    #     qre_params = Params(
+    #         params.epsilon,
+    #         params.neigh_param_d,
+    #         params.presolve_min_delta,
+    #         params.presolve_time_limit,
+    #         lambda,
+    #         params.qre_epsilon,
+    #         params.qre_iter_limit
+    #     )
+
+    #     _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, qre_params)
+    #     qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, qre_params)
+
+    #     y_diff = abs(y - qre_y)
+    #     alpha_belief_diff = sum(abs.(alpha - qre_alpha) .* belief)
+    #     alpha_diff = sum(abs.(alpha - qre_alpha))
+    #     policy1_diff = sum(abs.(UB_leader_policy - qre_UB_leader_policy))
+    #     policy2_diff = sum([sum(abs.(LB_follower_policy[s] - qre_LB_follower_policy[s])) for s in 1:length(partition.states) if belief[s] > 0])
+
+    #     if data === nothing
+    #         data = [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff alpha_diff policy1_diff policy2_diff]
+    #     else
+    #         data = vcat(data, [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff alpha_diff policy1_diff policy2_diff])
+    #     end
+    # end
+
+    # value_plot = plot(lambdas, data[:, 1:2];
+    #     label=["QRE y" "QRE alpha ⋅ belief"],
+    #     xscale=:log10,
+    #     xlim,
+    #     ylim=(0, 1),
+    #     xlabel="λ",
+    #     ylabel="V"
+    # )
+    # plot!([y sum(alpha .* belief)];
+    #     seriestype=:hline,
+    #     label=["LP y" "LP alpha ⋅ belief"]
+    # )
+
+    # diff_plot = plot(lambdas, data[:, 3:7];
+    #     label=["y diff" "alpha ⋅ belief diff" "alpha diff" "policy1 diff" "policy2 diff"],
+    #     xscale=:log10,
+    #     xlim,
+    #     xlabel="λ",
+    #     ylabel="Δ"
+    # )
+    # plot!([params.epsilon];
+    #     seriestype=:hline,
+    #     label="epsilon",
+    #     linestyle=:dash,
+    #     color=:black,
+    #     alpha=0.5
+    # )
+
+    # qre_plot = plot(value_plot, diff_plot;
+    #     layout=(2, 1),
+    #     size=(800, 1000),
+    #     legend=:topleft,
+    # )
+    # display(qre_plot)
+    # savefig(qre_plot, "plots/$depth-$belief.png")
+
+    # print("Press Enter to continue...")
+    # readline()
 
     point_based_update(partition, belief, alpha, y)
 

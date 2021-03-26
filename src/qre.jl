@@ -21,7 +21,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
     policy2_new = [fill(1 / length(states[s].follower_actions), length(states[s].follower_actions)) for s in partition.states]
 
     t = 1
-    while (!isapprox(policy1, policy1_new; atol=qre_epsilon) || !isapprox(policy2, policy2_new, atol=qre_epsilon)) && t <= qre_iter_limit
+    while (any(.!isapprox.(policy1, policy1_new; atol=qre_epsilon)) || any(.!isapprox.(policy2, policy2_new, atol=qre_epsilon))) && t <= qre_iter_limit
         policy1 = copy(policy1_new)
         policy2 = copy(policy2_new)
 

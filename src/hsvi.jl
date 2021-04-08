@@ -3,9 +3,9 @@ function hsvi(
     neigh_param_d::Float64 = 1.0e-6,
     presolve_min_delta::Float64 = 0.001,
     presolve_time_limit::Float64 = 60.0,
-    qre_lambda::Float64 = 10.0,
+    qre_lambda::Float64 = 100.0,
     qre_epsilon::Float64 = 0.001,
-    qre_iter_limit::Int64 = 10000
+    qre_iter_limit::Int64 = 1000
 )
     params = Params(
         epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda,
@@ -117,6 +117,7 @@ function presolve_UB(context::Context)
             state = states[s]
             belief = zeros(partition_state_count)
             belief[state.belief_index] = 1.0
+            # push!(partition.upsilon, (belief, state.presolve_UB_value + (rand() * 0.02 - 0.01)))
             push!(partition.upsilon, (belief, state.presolve_UB_value))
         end
     end
@@ -218,16 +219,23 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     @unpack neigh_param_d = params
     @unpack game = partition
 
-    # _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    # UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
-    _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
-    UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
+    # _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
+    # UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
     # _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
     # qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
 
-    # @debug "-------------------------------"
-    # @debug "depth: $depth"
-    # @debug "belief: $belief"
+    @debug "DOWN-------------------------------"
+    @debug "depth:\t\t$depth"
+    @debug "partition:\t$(partition.index)"
+    @debug "belief:\t$belief"
+    @debug "y:\t\t$y"
+    pre_UB = UB_value(partition, belief)
+    @debug "UB_value:\t$pre_UB"
+    @debug "alpha:\t\t$(sum(alpha .* belief))"
+    pre_LB = LB_value(partition, belief)
+    @debug "LB_value:\t$pre_LB"
     # @debug "LP vs. QRE(λ=$(params.qre_lambda))"
     # @debug "y:"
     # @debug "LP: $y"
@@ -242,7 +250,6 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     # @debug "LP: $LB_follower_policy"
     # @debug "QRE: $qre_LB_follower_policy"
 
-    # # TODO: Plot QRE-computed values depending on qre_lambda
     # xlim = (1, 500)
     # from, to = xlim
     # discretization = 50
@@ -317,6 +324,9 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
 
     point_based_update(partition, belief, alpha, y)
 
+    @debug "UB_value better:\t$(pre_UB > UB_value(partition, belief))"
+    @debug "LB_value better:\t$(pre_LB < LB_value(partition, belief))"
+
     a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
     target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
 
@@ -326,7 +336,24 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
 
         _, _, alpha = compute_LB_primal(partition, belief)
         _, _, y = compute_UB_dual(partition, belief)
+        # _, _, alpha = compute_LB_qre(partition, belief, params)
+        # _, _ , y = compute_UB_qre(partition, belief, params)
+
+        @debug "UP-------------------------------"
+        @debug "depth:\t\t$depth"
+        @debug "partition:\t$(partition.index)"
+        @debug "belief:\t$belief"
+        @debug "y:\t\t$y"
+        pre_UB = UB_value(partition, belief)
+        @debug "UB_value:\t$pre_UB"
+        @debug "alpha:\t\t$(sum(alpha .* belief))"
+        pre_LB = LB_value(partition, belief)
+        @debug "LB_value:\t$pre_LB"
+
         point_based_update(partition, belief, alpha, y)
+
+        @debug "UB_value better:\t$(pre_UB > UB_value(partition, belief))"
+        @debug "LB_value better:\t$(pre_LB < LB_value(partition, belief))"
     else
         @debug "max depth: $depth"
     end

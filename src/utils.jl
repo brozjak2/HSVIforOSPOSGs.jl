@@ -2,8 +2,8 @@ function point_based_update(
     partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64
 )
     push!(partition.gamma, alpha)
-    # push!(partition.upsilon, (belief, y + (rand() * 0.02 - 0.01)))
     push!(partition.upsilon, (belief, y))
+    # push!(partition.upsilon, (belief, y + (rand() * 0.02 - 0.01))) # UB NN noise simulation
 end
 
 function select_ao_pair(

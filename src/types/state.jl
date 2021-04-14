@@ -6,7 +6,6 @@ mutable struct State
     follower_action_index_table::Dict{Int64,Int64}
 
     presolve_UB_value::Float64
-    # TODO: Add UB_value and LB_value for qre value calls
 
     name::String
 end

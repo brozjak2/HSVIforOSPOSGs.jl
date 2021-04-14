@@ -117,8 +117,8 @@ function presolve_UB(context::Context)
             state = states[s]
             belief = zeros(partition_state_count)
             belief[state.belief_index] = 1.0
-            # push!(partition.upsilon, (belief, state.presolve_UB_value + (rand() * 0.02 - 0.01)))
             push!(partition.upsilon, (belief, state.presolve_UB_value))
+            # push!(partition.upsilon, (belief, state.presolve_UB_value + (rand() * 0.02 - 0.01))) # UB NN noise simulation
         end
     end
 end
@@ -219,40 +219,35 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     @unpack neigh_param_d = params
     @unpack game = partition
 
-    _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
-    # _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
-    # UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+    # _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
+    # UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
+    _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
+    UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+
+    ##### COMPARE LP vs. QRE #####
     # _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
     # qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
 
-    @debug "DOWN-------------------------------"
-    @debug "depth:\t\t$depth"
-    @debug "partition:\t$(partition.index)"
-    @debug "belief:\t$belief"
-    @debug "y:\t\t$y"
-    pre_UB = UB_value(partition, belief)
-    @debug "UB_value:\t$pre_UB"
-    @debug "alpha:\t\t$(sum(alpha .* belief))"
-    pre_LB = LB_value(partition, belief)
-    @debug "LB_value:\t$pre_LB"
     # @debug "LP vs. QRE(λ=$(params.qre_lambda))"
+    # @debug "belief:\t$belief)"
     # @debug "y:"
-    # @debug "LP: $y"
-    # @debug "QRE: $qre_y"
+    # @debug "LP:\t$y"
+    # @debug "QRE:\t$qre_y"
     # @debug "alpha:"
-    # @debug "LP: $alpha"
-    # @debug "QRE: $qre_alpha"
+    # @debug "LP:\t$alpha"
+    # @debug "QRE:\t$qre_alpha"
     # @debug "UB_leader_policy:"
-    # @debug "LP: $UB_leader_policy"
-    # @debug "QRE: $qre_UB_leader_policy"
+    # @debug "LP:\t$UB_leader_policy"
+    # @debug "QRE:\t$qre_UB_leader_policy"
     # @debug "LB_follower_policy:"
-    # @debug "LP: $LB_follower_policy"
-    # @debug "QRE: $qre_LB_follower_policy"
+    # @debug "LP:\t$LB_follower_policy"
+    # @debug "QRE:\t$qre_LB_follower_policy"
+    ##############################
 
-    # xlim = (1, 500)
+    ##### Plot QRE values with respect to lambda #####
+    # xlim = (0.01, 500)
     # from, to = xlim
-    # discretization = 50
+    # discretization = 20
     # lambdas = 10 .^ range(log10(from), log10(to); length=discretization)
 
     # data = nothing
@@ -272,14 +267,11 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
 
     #     y_diff = abs(y - qre_y)
     #     alpha_belief_diff = sum(abs.(alpha - qre_alpha) .* belief)
-    #     alpha_diff = sum(abs.(alpha - qre_alpha))
-    #     policy1_diff = sum(abs.(UB_leader_policy - qre_UB_leader_policy))
-    #     policy2_diff = sum([sum(abs.(LB_follower_policy[s] - qre_LB_follower_policy[s])) for s in 1:length(partition.states) if belief[s] > 0])
 
     #     if data === nothing
-    #         data = [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff alpha_diff policy1_diff policy2_diff]
+    #         data = [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff]
     #     else
-    #         data = vcat(data, [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff alpha_diff policy1_diff policy2_diff])
+    #         data = vcat(data, [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff])
     #     end
     # end
 
@@ -296,7 +288,7 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     #     label=["LP y" "LP alpha ⋅ belief"]
     # )
 
-    # diff_plot = plot(lambdas, data[:, 3:7];
+    # diff_plot = plot(lambdas, data[:, 3:4];
     #     label=["y diff" "alpha ⋅ belief diff" "alpha diff" "policy1 diff" "policy2 diff"],
     #     xscale=:log10,
     #     xlim,
@@ -317,15 +309,12 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     #     legend=:topleft,
     # )
     # display(qre_plot)
-    # savefig(qre_plot, "plots/$depth-$belief.png")
 
     # print("Press Enter to continue...")
     # readline()
+    ##################################################
 
     point_based_update(partition, belief, alpha, y)
-
-    @debug "UB_value better:\t$(pre_UB > UB_value(partition, belief))"
-    @debug "LB_value better:\t$(pre_LB < LB_value(partition, belief))"
 
     a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
     target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
@@ -334,26 +323,12 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
         target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
         explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params, depth + 1)
 
-        _, _, alpha = compute_LB_primal(partition, belief)
-        _, _, y = compute_UB_dual(partition, belief)
-        # _, _, alpha = compute_LB_qre(partition, belief, params)
-        # _, _ , y = compute_UB_qre(partition, belief, params)
-
-        @debug "UP-------------------------------"
-        @debug "depth:\t\t$depth"
-        @debug "partition:\t$(partition.index)"
-        @debug "belief:\t$belief"
-        @debug "y:\t\t$y"
-        pre_UB = UB_value(partition, belief)
-        @debug "UB_value:\t$pre_UB"
-        @debug "alpha:\t\t$(sum(alpha .* belief))"
-        pre_LB = LB_value(partition, belief)
-        @debug "LB_value:\t$pre_LB"
+        # _, _, alpha = compute_LB_primal(partition, belief)
+        # _, _, y = compute_UB_dual(partition, belief)
+        _, _, alpha = compute_LB_qre(partition, belief, params)
+        _, _ , y = compute_UB_qre(partition, belief, params)
 
         point_based_update(partition, belief, alpha, y)
-
-        @debug "UB_value better:\t$(pre_UB > UB_value(partition, belief))"
-        @debug "LB_value better:\t$(pre_LB < LB_value(partition, belief))"
     else
         @debug "max depth: $depth"
     end

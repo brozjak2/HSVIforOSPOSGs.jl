@@ -5,10 +5,20 @@ function compute_UB_qre(partition, belief, params)
     return policy1, policy2, sum(states_values .* belief)
 end
 
+function get_cache_value(value_cache, value_func, target_partition, target_belief)
+    rounded_belief = round.(target_belief; digits=2)
+
+    return get!(value_cache, (target_partition.index, rounded_belief)) do
+        value_func(target_partition, target_belief)
+    end
+end
+
 function compute_qre(partition::Partition, belief::Vector{Float64}, params::Params, value_func::Function)
     @unpack game = partition
     @unpack qre_lambda, qre_epsilon, qre_iter_limit = params
     @unpack discount_factor, states, partitions, state_index_table = game
+
+    value_cache = Dict{Tuple{Int64,Vector{Float64}},Float64}()
 
     leader_action_count = length(partition.leader_actions)
 
@@ -48,7 +58,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
                 end
                 target_belief = target_belief ./ ao_prob
 
-                a1_values[a1i] += discount_factor * ao_prob * value_func(target_partition, target_belief)
+                a1_values[a1i] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
             end
         end
 
@@ -86,7 +96,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
                     end
                     target_belief = target_belief ./ ao_prob
 
-                    a2_values[si][a2i] -= discount_factor * ao_prob * value_func(target_partition, target_belief)
+                    a2_values[si][a2i] -= discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
                 end
             end
         end
@@ -139,7 +149,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
             end
             target_belief = target_belief ./ ao_prob
 
-            states_values[si] += discount_factor * ao_prob * value_func(target_partition, target_belief)
+            states_values[si] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
         end
     end
 

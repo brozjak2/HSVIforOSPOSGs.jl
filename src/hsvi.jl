@@ -86,8 +86,10 @@ function presolve_UB(context::Context)
             s = state.index
             partition = partitions[state.partition]
 
-            state_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
-            JuMP.set_optimizer_attribute(state_value_model, "OutputFlag", 0)
+            # state_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
+            # JuMP.set_optimizer_attribute(state_value_model, "OutputFlag", 0)
+            state_value_model = Model(GLPK.Optimizer)
+            JuMP.set_optimizer_attribute(state_value_model, "msg_lev", GLPK.GLP_MSG_OFF)
 
             @variable(state_value_model, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0)
             @variable(state_value_model, presolve_value)

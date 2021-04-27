@@ -1,13 +1,13 @@
 module HSVIforOneSidedPOSGs
 
-using JuMP
-using Gurobi
 using Flux
-using Plots
+using GLPK
+using Gurobi
+using JuMP
+using LinearAlgebra
 using Logging
 using Parameters
 using Printf
-using ProgressMeter
 
 export hsvi
 

@@ -1,24 +1,29 @@
-compute_LB_qre(partition, belief, params) = compute_qre(partition, belief, params, LB_value)
+compute_LB_qre(partition, belief, context) = compute_qre(partition, belief, context, LB_value)
 
-function compute_UB_qre(partition, belief, params)
-    policy1, policy2, states_values = compute_qre(partition, belief, params, UB_value)
-    return policy1, policy2, sum(states_values .* belief)
+function compute_UB_qre(partition, belief, context)
+    policy1, policy2, states_values = compute_qre(partition, belief, context, UB_value)
+    return policy1, policy2, dot(states_values, belief)
 end
 
-function get_cache_value(value_cache, value_func, target_partition, target_belief)
-    rounded_belief = round.(target_belief; digits=3)
-
-    return get!(value_cache, (target_partition.index, rounded_belief)) do
-        value_func(target_partition, target_belief)
+function get_cache_value(value_cache, value_func, target_partition, target_belief, context)
+    for ((partition, belief), value) in value_cache
+        if partition == target_partition.index && isapprox(belief, target_belief; atol=1e-4)
+            return value
+        end
     end
+
+    value = value_func(target_partition, target_belief, context)
+    push!(value_cache, ((target_partition.index, target_belief), value))
+
+    return value
 end
 
-function compute_qre(partition::Partition, belief::Vector{Float64}, params::Params, value_func::Function)
-    @unpack game = partition
-    @unpack qre_lambda, qre_epsilon, qre_iter_limit = params
+function compute_qre(partition, belief, context, value_func)
+    @unpack game, args = context
+    @unpack qre_lambda, qre_epsilon, qre_iter_limit = args
     @unpack discount_factor, states, partitions, state_index_table = game
 
-    value_cache = Dict{Tuple{Int64,Vector{Float64}},Float64}()
+    value_cache = Vector{Tuple{Tuple{Int64,Vector{Float64}},Float64}}(undef, 0)
 
     leader_action_count = length(partition.leader_actions)
 
@@ -58,7 +63,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
                 end
                 target_belief = target_belief ./ ao_prob
 
-                a1_values[a1i] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
+                a1_values[a1i] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
             end
         end
 
@@ -96,7 +101,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
                     end
                     target_belief = target_belief ./ ao_prob
 
-                    a2_values[si][a2i] -= discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
+                    a2_values[si][a2i] -= discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
                 end
             end
         end
@@ -149,7 +154,7 @@ function compute_qre(partition::Partition, belief::Vector{Float64}, params::Para
             end
             target_belief = target_belief ./ ao_prob
 
-            states_values[si] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief)
+            states_values[si] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
         end
     end
 

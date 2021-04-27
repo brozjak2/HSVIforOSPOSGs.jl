@@ -20,11 +20,4 @@ include("qre.jl")
 include("linear_programs.jl")
 include("hsvi.jl")
 
-const global GRB_ENV = Ref{Gurobi.Env}()
-
-# set global Gurobi environment at module runtime
-function __init__()
-    GRB_ENV[] = Gurobi.Env()
-end
-
 end

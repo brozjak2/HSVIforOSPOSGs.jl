@@ -21,6 +21,6 @@ end
 function Base.show(io::IO, parsed_game_definition::ParsedGameDefinition)
     println(io, "ParsedGameDefinition:")
     for field in fieldnames(ParsedGameDefinition)
-        println(io, "  $field = $(getfield(parsed_game_definition, field))")
+        println(io, "$field = $(getfield(parsed_game_definition, field))")
     end
 end

@@ -5,7 +5,7 @@ struct Reward
     r::Float64 # reward
 end
 
-function Reward(reward_string::String)
+function Reward(reward_string)
     reward_strings = split(reward_string, ' ')
     indexes = map((x) -> parse(Int64, x) + 1, reward_strings[1:3])
     reward = parse(Float64, reward_strings[4])
@@ -16,6 +16,6 @@ end
 function Base.show(io::IO, reward::Reward)
     println(io, "Reward:")
     for field in fieldnames(Reward)
-        println(io, "  $field = $(getfield(reward, field))")
+        println(io, "$field = $(getfield(reward, field))")
     end
 end

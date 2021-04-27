@@ -1,79 +1,128 @@
+"""
+    function hsvi(
+        game_file_path::String, epsilon::Float64;
+        lp_solver::Symbol = :glpk,
+        ub_value_method::Symbol = :nn,
+        stage_game_method::Symbol = :qre,
+        normalize_rewards::Bool = true,
+        neigh_param_d::Float64 = 1e-6,
+        presolve_min_delta::Float64 = 1e-6,
+        presolve_time_limit::Float64 = 300.0,
+        qre_lambda::Float64 = 100.0,
+        qre_epsilon::Float64 = 1e-3,
+        qre_iter_limit::Int64 = 1_000,
+        qre_cache_epsilon::Float64 = 1e-5,
+        nn_train_epochs::Int64 = 10_000,
+        nn_retrain_epochs::Int64 = 1_000,
+        nn_learning_rate::Float64 = 1e-2,
+        nn_neurons::Vector{Int64} = [12, 6],
+        ub_prunning_epsilon::Float64 = 1e-2
+    )
+
+Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
+aiming for precision `epsilon`.
+
+# Parameters
+    - game_file_path: path to the file with game definition
+    - epsilon: desired precision with which the algorithm tries to solve the value of the game
+    - lp_solver: solver of linear programs; either `:glpk` for GLPK or `:gurobi` for Gurobi
+        (requires installed Gurobi binaries and valid license)
+    - ub_value_method: implemetation for computing the value of the UB; either `:nn` for the
+        approximative method using Neural networks or `:lp` for the exact method using Linear Programming
+    - stage_game_method: implemetation for computing the value of stage game; either `:qre` for the
+        approximative iterative method of Quantal response equilibrium or `:lp` for the exact
+        method using Linear programming for min-max/max-min optimization
+    - normalize_rewards: normalize rewards (utilities) so that the minimal and maximal
+        rewards are equal to 0 and 1 respectively
+    - neigh_param_d: parameter that guarantees Lipschitz continuity and convergence of the algorithm
+    - presolve_min_delta: when changes to the bounds during the presolve stage of the algorithm
+        are smaller than this value the presolve is terminated
+    - presolve_time_limit: time limit for the presolve stage of the algorithm in seconds
+    - qre_lambda: constant of the QRE algorithm which affects the convergence
+    - qre_epsilon: when policies of both players do not change between consecutive iterations of
+        QRE by value larger than this, the QRE algorithm terminates
+    - qre_iter_limit: iteration limit for the QRE algorithm solving stage game
+    - qre_cache_epsilon: determines the imprecision that is allowed when caching bounds values in QRE algorithm
+    - nn_train_epochs: number of training epochs for the initial training of UB NNs
+    - nn_retrain_epochs: number of training epochs for the subsequent retrainings of UB NNs (after UB update)
+    - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
+    - nn_neurons: number of neurons in individual hidden layers of UB NNs
+    - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
+"""
 function hsvi(
     game_file_path::String, epsilon::Float64;
-    neigh_param_d::Float64 = 1.0e-6,
-    presolve_min_delta::Float64 = 0.001,
-    presolve_time_limit::Float64 = 60.0,
+    lp_solver::Symbol = :glpk,
+    ub_value_method::Symbol = :nn,
+    stage_game_method::Symbol = :qre,
+    normalize_rewards::Bool = true,
+    neigh_param_d::Float64 = 1e-6,
+    presolve_min_delta::Float64 = 1e-6,
+    presolve_time_limit::Float64 = 300.0,
     qre_lambda::Float64 = 100.0,
-    qre_epsilon::Float64 = 0.001,
-    qre_iter_limit::Int64 = 1000
+    qre_epsilon::Float64 = 1e-3,
+    qre_iter_limit::Int64 = 1_000,
+    qre_cache_epsilon::Float64 = 1e-5,
+    nn_train_epochs::Int64 = 10_000,
+    nn_retrain_epochs::Int64 = 1_000,
+    nn_learning_rate::Float64 = 1e-2,
+    nn_neurons::Vector{Int64} = [12, 6],
+    ub_prunning_epsilon::Float64 = 1e-2
 )
-    params = Params(
-        epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda,
-        qre_epsilon, qre_iter_limit
+    args = Args(
+        game_file_path, epsilon, lp_solver, ub_value_method, stage_game_method,
+        normalize_rewards, neigh_param_d, presolve_min_delta, presolve_time_limit,
+        qre_lambda, qre_epsilon, qre_iter_limit, qre_cache_epsilon, nn_train_epochs,
+        nn_retrain_epochs, nn_learning_rate, nn_neurons, ub_prunning_epsilon
     )
-    @debug params
+    @debug args
 
-    game = load(game_file_path)
-    @debug "Game loaded from $game_file_path"
+    game = load(args)
+    @debug "Game loaded from '$(args.game_file_path)'"
     @debug game
 
-    context = Context(params, game, time())
-    check_neigh_param(context)
+    context = Context(args, game)
+    check_neigh_param_d(context)
 
     presolve_UB(context)
-    TRAIN_EPOCHS = 10000
-    for partition in context.game.partitions
-        train_nn(partition, TRAIN_EPOCHS)
+    if ub_value_method == :nn
+        initial_nn_train(context)
     end
     @info @sprintf(
         "%7.3fs\tpresolveUB\t%+7.5f",
         time() - context.clock_start,
-        UB_value(game)
+        UB_value(context)
     )
+
     presolve_LB(context)
     @info @sprintf(
         "%7.3fs\tpresolveLB\t%+7.5f",
         time() - context.clock_start,
-        LB_value(game)
+        LB_value(context)
     )
 
     solve(context)
     @info @sprintf(
         "%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\tGame solved",
         time() - context.clock_start,
-        LB_value(game),
-        UB_value(game),
-        width(game)
+        LB_value(context),
+        UB_value(context),
+        width(context)
     )
 
     return context
 end
 
-function check_neigh_param(context::Context)
-    @unpack params, game = context
-    @unpack epsilon, neigh_param_d = params
-    @unpack discount_factor, lipschitz_delta = game
-
-    upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
-    if !(0 <= neigh_param_d <= upper_limit)
-        msg =  @sprintf(
-            "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
-            neigh_param_d, 0, upper_limit
-        )
-        @warn msg
-    end
-end
-
-function presolve_UB(context::Context)
-    @unpack params, game = context
-    @unpack presolve_min_delta, presolve_time_limit = params
+function presolve_UB(context)
+    @unpack args, game = context
+    @unpack presolve_min_delta, presolve_time_limit = args
     @unpack partitions, states = game
 
     clock_start = time()
     U = UB_max(game)
 
+    presolve_UB_value = zeros(length(states))
     for state in states
-        state.presolve_UB_value = U
+        presolve_UB_value[state.index] = U
     end
 
     delta = Inf
@@ -81,15 +130,12 @@ function presolve_UB(context::Context)
         delta = 0.0
 
         for state in states
-            prev_value = state.presolve_UB_value
-
             s = state.index
             partition = partitions[state.partition]
 
-            # state_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
-            # JuMP.set_optimizer_attribute(state_value_model, "OutputFlag", 0)
-            state_value_model = Model(GLPK.Optimizer)
-            JuMP.set_optimizer_attribute(state_value_model, "msg_lev", GLPK.GLP_MSG_OFF)
+            prev_value = presolve_UB_value[s]
+
+            state_value_model = create_lp_model(context)
 
             @variable(state_value_model, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0)
             @variable(state_value_model, presolve_value)
@@ -97,15 +143,15 @@ function presolve_UB(context::Context)
             @objective(state_value_model, Max, presolve_value)
 
             @constraint(state_value_model, [a2=state.follower_actions],
-                presolve_value <= sum(policy1[a1] * state_value(game, s, a1, a2) for a1 in partition.leader_actions))
+                presolve_value <= sum(policy1[a1] * next_value(game, presolve_UB_value, s, a1, a2) for a1 in partition.leader_actions))
 
             @constraint(state_value_model,
-                sum(policy1[a1] for a1 in partition.leader_actions) == 1)
+                sum(policy1[a1] for a1 in partition.leader_actions) == 1.0)
 
             optimize!(state_value_model)
-            state.presolve_UB_value = objective_value(state_value_model)
+            presolve_UB_value[s] = objective_value(state_value_model)
 
-            delta = max(delta, abs(prev_value - state.presolve_UB_value))
+            delta = max(delta, abs(prev_value - presolve_UB_value[s]))
         end
     end
     if delta <= presolve_min_delta
@@ -118,29 +164,30 @@ function presolve_UB(context::Context)
     end
 
     for partition in partitions
-        partition_state_count = length(partition.states)
         for s in partition.states
             state = states[s]
-            belief = zeros(partition_state_count)
+
+            belief = zeros(length(partition.states))
             belief[state.belief_index] = 1.0
-            push!(partition.upsilon, (belief, state.presolve_UB_value))
+
+            push!(partition.upsilon, (belief, presolve_UB_value[s]))
         end
     end
 end
 
-function state_value(game::Game, s::Int64, a1::Int64, a2::Int64)
+function next_value(game, presolve_UB_value, s, a1, a2)
     @unpack partitions, states, discount_factor = game
 
     partition = partitions[states[s].partition]
     immediate_reward = partition.rewards[(s, a1, a2)]
-    exp_transition_value = sum(t.p * states[t.sp].presolve_UB_value for t in partition.transitions[(s, a1, a2)])
+    exp_transition_value = sum(t.p * presolve_UB_value[t.sp] for t in partition.transitions[(s, a1, a2)])
 
     return immediate_reward + discount_factor * exp_transition_value
 end
 
-function presolve_LB(context::Context)
-    @unpack params, game = context
-    @unpack presolve_min_delta, presolve_time_limit = params
+function presolve_LB(context)
+    @unpack args, game = context
+    @unpack presolve_min_delta, presolve_time_limit = args
     @unpack partitions, states, discount_factor = game
 
     clock_start = time()
@@ -204,15 +251,15 @@ function presolve_LB(context::Context)
     end
 end
 
-function solve(context::Context)
-    @unpack params, game = context
-    @unpack epsilon, neigh_param_d = params
+function solve(context)
+    @unpack args, game = context
+    @unpack epsilon, neigh_param_d = args
     @unpack init_partition, init_belief = game
 
     iteration = 0
-    while excess(init_partition, init_belief, epsilon) > 0
+    while excess(init_partition, init_belief, epsilon, context) > 0
         log_progress(context, iteration)
-        explore(init_partition, init_belief, epsilon, params, 0)
+        explore(init_partition, init_belief, epsilon, context, 0)
 
         iteration += 1;
     end
@@ -220,32 +267,32 @@ function solve(context::Context)
     return game
 end
 
-function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, params::Params, depth::Int64)
-    @unpack neigh_param_d = params
-    @unpack game = partition
+function explore(partition, belief, rho, context, depth)
+    @unpack game, args = context
+    @unpack neigh_param_d = args
 
-    _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
-    UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
+    _, LB_follower_policy, alpha = compute_LB(partition, belief, context)
+    UB_leader_policy, _ , y = compute_UB(partition, belief, context)
 
-    point_based_update(partition, belief, alpha, y)
+    point_based_update(partition, belief, alpha, y, context)
 
-    a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho)
+    a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho, context)
     target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
 
-    if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho) > 0
-        target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
-        explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params, depth + 1)
+    if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho, context) > 0
+        target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, context)
+        explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context, depth + 1)
 
-        _, _, alpha = compute_LB_qre(partition, belief, params)
-        _, _ , y = compute_UB_qre(partition, belief, params)
+        _, _, alpha = compute_LB(partition, belief, context)
+        _, _ , y = compute_UB(partition, belief, context)
 
-        point_based_update(partition, belief, alpha, y)
+        point_based_update(partition, belief, alpha, y, context)
     else
         @debug "max depth: $depth"
     end
 end
 
-function log_progress(context::Context, iteration::Int64)
+function log_progress(context, iteration)
     @unpack game, clock_start = context
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
@@ -254,9 +301,9 @@ function log_progress(context::Context, iteration::Int64)
         "%4d:\t%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\t%5d\t%5d",
         iteration,
         time() - clock_start,
-        LB_value(game),
-        UB_value(game),
-        width(game),
+        LB_value(context),
+        UB_value(context),
+        width(context),
         global_gamma_size,
         global_upsilon_size
     )

@@ -1,4 +1,4 @@
-mutable struct Game <: AbstractGame
+mutable struct Game
     discount_factor::Float64
     states::Vector{State}
     partitions::Vector{Partition}
@@ -21,15 +21,15 @@ mutable struct Game <: AbstractGame
     observations_names::Vector{String}
 end
 
-function Game(parsed_game_definition::ParsedGameDefinition)
+function Game(parsed_game_definition, args)
     @unpack game_params, states_names, states_partitions, leader_actions_names,
         follower_actions_names, observations_names, follower_actions, leader_actions,
         transitions, rewards, init_partition_index, init_belief = parsed_game_definition
     @unpack state_count, partition_count, leader_action_count, follower_action_count,
         observation_count, transition_count, reward_count, discount_factor = game_params
 
-    minimal_reward = minimum([r.r for r in parsed_game_definition.rewards])
-    maximal_reward = maximum([r.r for r in parsed_game_definition.rewards])
+    minimal_reward = minimum([reward.r for reward in rewards])
+    maximal_reward = maximum([reward.r for reward in rewards])
     U = UB_max(maximal_reward, discount_factor)
     L = LB_min(minimal_reward, discount_factor)
     lipschitz_delta = (U - L) / 2
@@ -45,7 +45,7 @@ function Game(parsed_game_definition::ParsedGameDefinition)
         follower_action_index_table = Dict(a2 => a2i for (a2i, a2) in enumerate(follower_actions[s]))
         state_index_table[s] = length(partitions_states[p])
         states[s] = State(
-            s, p, state_index_table[s], follower_actions[s], follower_action_index_table, 0,
+            s, p, state_index_table[s], follower_actions[s], follower_action_index_table,
             states_names[s]
         )
     end
@@ -54,7 +54,7 @@ function Game(parsed_game_definition::ParsedGameDefinition)
     for p in 1:partition_count
         leader_action_index_table = Dict(a1 => a1i for (a1i, a1) in enumerate(leader_actions[p]))
         partitions[p] = Partition(
-            p, partitions_states[p], leader_actions[p], leader_action_index_table
+            p, partitions_states[p], leader_actions[p], leader_action_index_table, args
         )
     end
     init_partition = partitions[init_partition_index]
@@ -94,42 +94,30 @@ function Game(parsed_game_definition::ParsedGameDefinition)
         maximal_reward, leader_actions_names, follower_actions_names, observations_names
     )
 
-    for partition in partitions
-        partition.game = game
-    end
-
     return game
-end
-
-function dictarray_push_or_init!(dictarray::Dict{K,Array{V,N}}, key::K, value::V) where {K,V,N}
-    if haskey(dictarray, key)
-        push!(dictarray[key], value)
-    else
-        dictarray[key] = [value]
-    end
 end
 
 function Base.show(io::IO, game::Game)
     println(io, "Game:")
-    println(io, "  discount_factor = $(game.discount_factor)")
-    println(io, "  state_count = $(length(game.states))")
-    println(io, "  partition_count = $(length(game.partitions))")
-    println(io, "  leader_action_count = $(length(game.leader_actions_names))")
-    println(io, "  follower_action_count = $(length(game.follower_actions_names))")
-    println(io, "  observation_count = $(length(game.observations_names))")
-    println(io, "  transition_count = $(length(game.transitions))")
-    println(io, "  reward_count = $(length(game.rewards))")
-    println(io, "  minimal_reward = $(game.minimal_reward)")
-    println(io, "  maximal_reward = $(game.maximal_reward)")
-    println(io, "  LB_min = $(LB_min(game))")
-    println(io, "  UB_max = $(UB_max(game))")
-    println(io, "  lipschitz_delta = $(game.lipschitz_delta)")
-    println(io, "  init_partition = $(game.init_partition.index)")
-    println(io, "  init_belief = $(game.init_belief)")
+    println(io, "discount_factor = $(game.discount_factor)")
+    println(io, "state_count = $(length(game.states))")
+    println(io, "partition_count = $(length(game.partitions))")
+    println(io, "leader_action_count = $(length(game.leader_actions_names))")
+    println(io, "follower_action_count = $(length(game.follower_actions_names))")
+    println(io, "observation_count = $(length(game.observations_names))")
+    println(io, "transition_count = $(length(game.transitions))")
+    println(io, "reward_count = $(length(game.rewards))")
+    println(io, "minimal_reward = $(game.minimal_reward)")
+    println(io, "maximal_reward = $(game.maximal_reward)")
+    println(io, "LB_min = $(LB_min(game))")
+    println(io, "UB_max = $(UB_max(game))")
+    println(io, "lipschitz_delta = $(game.lipschitz_delta)")
+    println(io, "init_partition = $(game.init_partition.index)")
+    println(io, "init_belief = $(game.init_belief)")
 end
 
+LB_min(minimal_reward, discount_factor) = minimal_reward / (1 - discount_factor)
 LB_min(game::Game) = LB_min(game.minimal_reward, game.discount_factor)
-LB_min(minimal_reward::Float64, discount_factor::Float64) = minimal_reward / (1 - discount_factor)
 
+UB_max(maximal_reward, discount_factor) = maximal_reward / (1 - discount_factor)
 UB_max(game::Game) = UB_max(game.maximal_reward, game.discount_factor)
-UB_max(maximal_reward::Float64, discount_factor::Float64) = maximal_reward / (1 - discount_factor)

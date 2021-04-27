@@ -1,27 +1,36 @@
-LB_value(game::Game) = LB_value(game.init_partition, game.init_belief)
+LB_value(context) = LB_value(context.game.init_partition, context.game.init_belief, context)
 
-function LB_value(partition::Partition, belief::Vector{Float64})
-    return maximum(sum(alpha .* belief) for alpha in partition.gamma)
+function LB_value(partition, belief, context)
+    return maximum(dot(alpha, belief) for alpha in partition.gamma)
 end
 
-UB_value(game::Game) = UB_value(game.init_partition, game.init_belief)
+UB_value(context) = UB_value(context.game.init_partition, context.game.init_belief, context)
 
-# function UB_value(partition::Partition, belief::Vector{Float64})
-#     return partition.nn(belief)[1]
-# end
+function UB_value(partition, belief, context)
+    @unpack ub_value_method = context.args
 
-function UB_value(partition::Partition, belief::Vector{Float64})
-    @unpack lipschitz_delta = partition.game
+    if ub_value_method == :lp
+        return UB_value_lp(partition, belief, context)
+    elseif ub_value_method == :nn
+        return UB_value_nn(partition, belief)
+    else
+        hrow(InvalidArgumentValue("ub_value_method", ub_value_method))
+    end
+end
+
+function UB_value_nn(partition, belief)
+    return partition.nn(belief)[1]
+end
+
+function UB_value_lp(partition, belief, context)
+    @unpack lipschitz_delta = context.game
 
     upsilon_size = length(partition.upsilon)
     state_count = length(partition.states)
 
-    # UB_value_model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
-    # JuMP.set_optimizer_attribute(UB_value_model, "OutputFlag", 0)
-    UB_value_model = Model(GLPK.Optimizer)
-    JuMP.set_optimizer_attribute(UB_value_model, "msg_lev", GLPK.GLP_MSG_OFF)
+    UB_value_model = create_lp_model(context)
 
-    @variable(UB_value_model, lambda[i=1:upsilon_size] >= 0) # 33f
+    @variable(UB_value_model, lambda[i=1:upsilon_size] >= 0.0) # 33f
     @variable(UB_value_model, delta[si=1:state_count])
     @variable(UB_value_model, beliefp[si=1:state_count])
 
@@ -45,15 +54,15 @@ function UB_value(partition::Partition, belief::Vector{Float64})
 
     # 33e
     @constraint(UB_value_model, con33e,
-        sum(lambda[i] for i in 1:upsilon_size) == 1)
+        sum(lambda[i] for i in 1:upsilon_size) == 1.0)
 
     optimize!(UB_value_model)
 
     return objective_value(UB_value_model)
 end
 
-width(game::Game) = width(game.init_partition, game.init_belief)
+width(context) = width(context.game.init_partition, context.game.init_belief, context)
 
-function width(partition::Partition, belief::Vector{Float64})
-    return UB_value(partition, belief) - LB_value(partition, belief)
+function width(partition, belief, context)
+    return UB_value(partition, belief, context) - LB_value(partition, belief, context)
 end

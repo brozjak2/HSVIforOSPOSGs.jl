@@ -9,7 +9,7 @@ struct GameParams
     discount_factor::Float64
 end
 
-function GameParams(params_string::String)
+function GameParams(params_string)
     params_strings = split(params_string, ' ')
     int_params = map((x) -> parse(Int64, x), params_strings[1:7])
     discount_factor = parse(Float64, params_strings[8])
@@ -20,6 +20,6 @@ end
 function Base.show(io::IO, game_params::GameParams)
     println(io, "GameParams:")
     for field in fieldnames(GameParams)
-        println(io, "  $field = $(getfield(game_params, field))")
+        println(io, "$field = $(getfield(game_params, field))")
     end
 end

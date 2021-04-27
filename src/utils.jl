@@ -1,38 +1,39 @@
-function point_based_update(
-    partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64
-)
+function point_based_update(partition, belief, alpha, y, context)
+    @unpack args = context
+    @unpack ub_value_method = args
+
     push!(partition.gamma, alpha)
 
-    NEIGHBORHOOD_EPSILON = 0.01
-    RETRAIN_EPOCHS = 1000
-
-    new_belief = true
-    for (i, (beliefp, yp)) in enumerate(partition.upsilon)
-        if norm(belief - beliefp) <= NEIGHBORHOOD_EPSILON
-            if y < yp
-                deleteat!(partition.upsilon, i)
-                push!(partition.upsilon, (belief, y))
-                train_nn(partition, RETRAIN_EPOCHS)
-            end
-
-            new_belief = false
-            break
-        end
-    end
-
-    if new_belief
+    if ub_value_method == :nn
+        prune_and_retrain(partition, belief, y, args)
+    else
         push!(partition.upsilon, (belief, y))
-        train_nn(partition, RETRAIN_EPOCHS)
     end
 end
 
-function select_ao_pair(
-    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
-    policy2::Vector{Vector{Float64}}, rho::Float64
-)
+function prune_and_retrain(partition, belief, y, args)
+    @unpack nn_retrain_epochs, ub_prunning_epsilon = args
+
+    for (i, (beliefp, yp)) in enumerate(partition.upsilon)
+        if isapprox(belief, beliefp; atol=ub_prunning_epsilon)
+            if y < yp
+                deleteat!(partition.upsilon, i)
+                push!(partition.upsilon, (belief, y))
+                train_nn(partition, nn_retrain_epochs, args)
+            end
+
+            return
+        end
+    end
+
+    push!(partition.upsilon, (belief, y))
+    train_nn(partition, nn_retrain_epochs, args)
+end
+
+function select_ao_pair(partition, belief, policy1, policy2, rho, context)
     weighted_excess_gaps = Dict([])
     for a1 in partition.leader_actions, o in partition.observations[a1]
-        weighted_excess_gaps[(a1, o)] = weighted_excess(partition, belief, policy1, policy2, a1, o, rho)
+        weighted_excess_gaps[(a1, o)] = weighted_excess(partition, belief, policy1, policy2, a1, o, rho, context)
     end
 
     _, (a1, o) = findmax(weighted_excess_gaps)
@@ -40,27 +41,21 @@ function select_ao_pair(
     return a1, o
 end
 
-function weighted_excess(
-    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
-    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64, rho::Float64
-)
-    @unpack partitions = partition.game
+function weighted_excess(partition, belief, policy1, policy2, a1, o, rho, context)
+    @unpack partitions = context.game
 
-    target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o)
+    target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o, context)
     target_partition = partitions[partition.partition_transitions[(a1, o)]]
 
-    return (ao_pair_probability(partition, belief, policy1, policy2, a1, o)
-           * excess(target_partition, target_belief, rho))
+    return (ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
+           * excess(target_partition, target_belief, rho, context))
 end
 
-function get_target_belief(
-    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
-    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64
-)
-    @unpack game = partition
+function get_target_belief(partition, belief, policy1, policy2, a1, o, context)
+    @unpack game = context
     @unpack states, partitions, state_index_table = game
 
-    ao_inverse_prob = 1 / ao_pair_probability(partition, belief, policy1, policy2, a1, o)
+    ao_inverse_prob = 1 / ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
     ao_inverse_prob = isinf(ao_inverse_prob) ? zero(ao_inverse_prob) : ao_inverse_prob # handle division by zero
 
     target_partition = partitions[partition.partition_transitions[(a1, o)]]
@@ -77,11 +72,8 @@ function get_target_belief(
     return ao_inverse_prob * target_belief
 end
 
-function ao_pair_probability(
-    partition::Partition, belief::Vector{Float64}, policy1::Vector{Float64},
-    policy2::Vector{Vector{Float64}}, a1::Int64, o::Int64
-)
-    @unpack game = partition
+function ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
+    @unpack game = context
     @unpack states, state_index_table = game
 
     ao_pair_probability = 0
@@ -97,10 +89,87 @@ function ao_pair_probability(
     return ao_pair_probability
 end
 
-function excess(partition::Partition, belief::Vector{Float64}, rho::Float64)
-    return width(partition, belief) - rho
+function excess(partition, belief, rho, context)
+    return width(partition, belief, context) - rho
 end
 
-function next_rho(prev_rho::Float64, game::Game, neigh_param_d::Float64)
+function next_rho(prev_rho, game, neigh_param_d)
     return (prev_rho - 2 * game.lipschitz_delta * neigh_param_d) / game.discount_factor
+end
+
+function check_neigh_param_d(context)
+    @unpack args, game = context
+    @unpack epsilon, neigh_param_d = args
+    @unpack discount_factor, lipschitz_delta = game
+
+    upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
+    if !(0 <= neigh_param_d <= upper_limit)
+        @warn @sprintf(
+            "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
+            neigh_param_d, 0, upper_limit
+        )
+    end
+end
+
+function dictarray_push_or_init!(dictarray::Dict{K,Array{V,N}}, key::K, value::V) where {K,V,N}
+    if haskey(dictarray, key)
+        push!(dictarray[key], value)
+    else
+        dictarray[key] = [value]
+    end
+end
+
+function create_lp_model(context)
+    lp_solver = context.args.lp_solver
+
+    if lp_solver == :gurobi
+        model = Model(() -> Gurobi.Optimizer(context.gurobi_env))
+        JuMP.set_optimizer_attribute(model, "OutputFlag", 0)
+    elseif lp_solver == :glpk
+        model = Model(GLPK.Optimizer)
+        JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
+    else
+        throw(InvalidArgumentValue("lp_solver", lp_solver))
+    end
+
+    return model
+end
+
+function initial_nn_train(context)
+    @unpack game, args = context
+    @unpack nn_train_epochs = args
+
+    for partition in game.partitions
+        train_nn(partition, nn_train_epochs, args)
+
+        @debug @sprintf(
+            "%7.3fs\tpartition %i NN trained",
+            time() - context.clock_start,
+            partition.index
+        )
+    end
+end
+
+function compute_LB(partition, belief, context)
+    @unpack stage_game_method = context.args
+
+    if stage_game_method == :lp
+        return compute_LB_primal(partition, belief, context)
+    elseif stage_game_method == :qre
+        return compute_LB_qre(partition, belief, context)
+    else
+        hrow(InvalidArgumentValue("stage_game_method", stage_game_method))
+    end
+end
+
+function compute_UB(partition, belief, context)
+    @unpack stage_game_method = context.args
+
+    if stage_game_method == :lp
+        return compute_UB_dual(partition, belief, context)
+    elseif stage_game_method == :qre
+        return compute_UB_qre(partition, belief, context)
+    else
+        hrow(InvalidArgumentValue("stage_game_method", stage_game_method))
+    end
 end

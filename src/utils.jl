@@ -2,8 +2,28 @@ function point_based_update(
     partition::Partition, belief::Vector{Float64}, alpha::Vector{Float64}, y::Float64
 )
     push!(partition.gamma, alpha)
-    push!(partition.upsilon, (belief, y))
-    # push!(partition.upsilon, (belief, y + (rand() * 0.02 - 0.01))) # UB NN noise simulation
+
+    NEIGHBORHOOD_EPSILON = 0.01
+    RETRAIN_EPOCHS = 1000
+
+    new_belief = true
+    for (i, (beliefp, yp)) in enumerate(partition.upsilon)
+        if norm(belief - beliefp) <= NEIGHBORHOOD_EPSILON
+            if y < yp
+                deleteat!(partition.upsilon, i)
+                push!(partition.upsilon, (belief, y))
+                train_nn(partition, RETRAIN_EPOCHS)
+            end
+
+            new_belief = false
+            break
+        end
+    end
+
+    if new_belief
+        push!(partition.upsilon, (belief, y))
+        train_nn(partition, RETRAIN_EPOCHS)
+    end
 end
 
 function select_ao_pair(

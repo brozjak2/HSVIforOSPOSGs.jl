@@ -6,7 +6,7 @@ function compute_UB_qre(partition, belief, params)
 end
 
 function get_cache_value(value_cache, value_func, target_partition, target_belief)
-    rounded_belief = round.(target_belief; digits=2)
+    rounded_belief = round.(target_belief; digits=3)
 
     return get!(value_cache, (target_partition.index, rounded_belief)) do
         value_func(target_partition, target_belief)

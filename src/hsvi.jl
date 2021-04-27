@@ -21,6 +21,10 @@ function hsvi(
     check_neigh_param(context)
 
     presolve_UB(context)
+    TRAIN_EPOCHS = 10000
+    for partition in context.game.partitions
+        train_nn(partition, TRAIN_EPOCHS)
+    end
     @info @sprintf(
         "%7.3fs\tpresolveUB\t%+7.5f",
         time() - context.clock_start,
@@ -118,7 +122,6 @@ function presolve_UB(context::Context)
             belief = zeros(partition_state_count)
             belief[state.belief_index] = 1.0
             push!(partition.upsilon, (belief, state.presolve_UB_value))
-            # push!(partition.upsilon, (belief, state.presolve_UB_value + (rand() * 0.02 - 0.01))) # UB NN noise simulation
         end
     end
 end
@@ -219,100 +222,8 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
     @unpack neigh_param_d = params
     @unpack game = partition
 
-    # _, LB_follower_policy, alpha = compute_LB_primal(partition, belief)
-    # UB_leader_policy, _ , y = compute_UB_dual(partition, belief)
     _, LB_follower_policy, alpha = compute_LB_qre(partition, belief, params)
     UB_leader_policy, _ , y = compute_UB_qre(partition, belief, params)
-
-    ##### COMPARE LP vs. QRE #####
-    # _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, params)
-    # qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, params)
-
-    # @debug "LP vs. QRE(λ=$(params.qre_lambda))"
-    # @debug "belief:\t$belief)"
-    # @debug "y:"
-    # @debug "LP:\t$y"
-    # @debug "QRE:\t$qre_y"
-    # @debug "alpha:"
-    # @debug "LP:\t$alpha"
-    # @debug "QRE:\t$qre_alpha"
-    # @debug "UB_leader_policy:"
-    # @debug "LP:\t$UB_leader_policy"
-    # @debug "QRE:\t$qre_UB_leader_policy"
-    # @debug "LB_follower_policy:"
-    # @debug "LP:\t$LB_follower_policy"
-    # @debug "QRE:\t$qre_LB_follower_policy"
-    ##############################
-
-    ##### Plot QRE values with respect to lambda #####
-    # xlim = (0.01, 500)
-    # from, to = xlim
-    # discretization = 20
-    # lambdas = 10 .^ range(log10(from), log10(to); length=discretization)
-
-    # data = nothing
-    # @showprogress 1 "QRE: " for lambda in lambdas
-    #     qre_params = Params(
-    #         params.epsilon,
-    #         params.neigh_param_d,
-    #         params.presolve_min_delta,
-    #         params.presolve_time_limit,
-    #         lambda,
-    #         params.qre_epsilon,
-    #         params.qre_iter_limit
-    #     )
-
-    #     _, qre_LB_follower_policy, qre_alpha = compute_LB_qre(partition, belief, qre_params)
-    #     qre_UB_leader_policy, _ , qre_y = compute_UB_qre(partition, belief, qre_params)
-
-    #     y_diff = abs(y - qre_y)
-    #     alpha_belief_diff = sum(abs.(alpha - qre_alpha) .* belief)
-
-    #     if data === nothing
-    #         data = [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff]
-    #     else
-    #         data = vcat(data, [qre_y sum(qre_alpha .* belief) y_diff alpha_belief_diff])
-    #     end
-    # end
-
-    # value_plot = plot(lambdas, data[:, 1:2];
-    #     label=["QRE y" "QRE alpha ⋅ belief"],
-    #     xscale=:log10,
-    #     xlim,
-    #     ylim=(0, 1),
-    #     xlabel="λ",
-    #     ylabel="V"
-    # )
-    # plot!([y sum(alpha .* belief)];
-    #     seriestype=:hline,
-    #     label=["LP y" "LP alpha ⋅ belief"]
-    # )
-
-    # diff_plot = plot(lambdas, data[:, 3:4];
-    #     label=["y diff" "alpha ⋅ belief diff" "alpha diff" "policy1 diff" "policy2 diff"],
-    #     xscale=:log10,
-    #     xlim,
-    #     xlabel="λ",
-    #     ylabel="Δ"
-    # )
-    # plot!([params.epsilon];
-    #     seriestype=:hline,
-    #     label="epsilon",
-    #     linestyle=:dash,
-    #     color=:black,
-    #     alpha=0.5
-    # )
-
-    # qre_plot = plot(value_plot, diff_plot;
-    #     layout=(2, 1),
-    #     size=(800, 1000),
-    #     legend=:topleft,
-    # )
-    # display(qre_plot)
-
-    # print("Press Enter to continue...")
-    # readline()
-    ##################################################
 
     point_based_update(partition, belief, alpha, y)
 
@@ -323,8 +234,6 @@ function explore(partition::Partition, belief::Vector{Float64}, rho::Float64, pa
         target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o)
         explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), params, depth + 1)
 
-        # _, _, alpha = compute_LB_primal(partition, belief)
-        # _, _, y = compute_UB_dual(partition, belief)
         _, _, alpha = compute_LB_qre(partition, belief, params)
         _, _ , y = compute_UB_qre(partition, belief, params)
 

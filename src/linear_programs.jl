@@ -3,7 +3,7 @@ function compute_LB_primal(partition, belief, context)
     @unpack discount_factor, states, partitions = game
 
     LB_primal = Model(GLPK.Optimizer)
-    JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
+    JuMP.set_optimizer_attribute(LB_primal, "msg_lev", GLPK.GLP_MSG_OFF)
 
     @variable(LB_primal, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0) # 27f
     @variable(LB_primal, lambda[a1=partition.leader_actions, o=partition.observations[a1], i=1:length(partitions[partition.partition_transitions[(a1, o)]].gamma)] >= 0.0) # 27g
@@ -49,7 +49,7 @@ function compute_UB_dual(partition, belief, context)
     @unpack discount_factor, states, partitions = game
 
     UB_dual = Model(GLPK.Optimizer)
-    JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
+    JuMP.set_optimizer_attribute(UB_dual, "msg_lev", GLPK.GLP_MSG_OFF)
 
     @variable(UB_dual, gamevalue)
     @variable(UB_dual, 1.0 >= policy2[s=partition.states, a2=states[s].follower_actions] >= 0.0) # 28f

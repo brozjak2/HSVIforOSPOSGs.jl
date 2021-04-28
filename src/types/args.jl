@@ -1,7 +1,6 @@
 struct Args
     game_file_path::String
     epsilon::Float64
-    lp_solver::Symbol
     ub_value_method::Symbol
     stage_game_method::Symbol
     normalize_rewards::Bool

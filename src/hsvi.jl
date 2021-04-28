@@ -65,10 +65,10 @@ function hsvi(
     ub_prunning_epsilon::Float64 = 1e-2
 )
     args = Args(
-        game_file_path, epsilon, lp_solver, ub_value_method, stage_game_method,
-        normalize_rewards, neigh_param_d, presolve_min_delta, presolve_time_limit,
-        qre_lambda, qre_epsilon, qre_iter_limit, qre_cache_epsilon, nn_train_epochs,
-        nn_retrain_epochs, nn_learning_rate, nn_neurons, ub_prunning_epsilon
+        game_file_path, epsilon, ub_value_method, stage_game_method, normalize_rewards,
+        neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda, qre_epsilon,
+        qre_iter_limit, qre_cache_epsilon, nn_train_epochs, nn_retrain_epochs,
+        nn_learning_rate, nn_neurons, ub_prunning_epsilon
     )
     @debug args
 

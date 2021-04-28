@@ -119,22 +119,6 @@ function dictarray_push_or_init!(dictarray::Dict{K,Array{V,N}}, key::K, value::V
     end
 end
 
-function create_lp_model(context)
-    lp_solver = context.args.lp_solver
-
-    if lp_solver == :gurobi
-        model = Model(() -> Gurobi.Optimizer(context.gurobi_env))
-        JuMP.set_optimizer_attribute(model, "OutputFlag", 0)
-    elseif lp_solver == :glpk
-        model = Model(GLPK.Optimizer)
-        JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
-    else
-        throw(InvalidArgumentValue("lp_solver", lp_solver))
-    end
-
-    return model
-end
-
 function initial_nn_train(context)
     @unpack game, args = context
     @unpack nn_train_epochs = args

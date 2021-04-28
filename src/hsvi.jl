@@ -1,7 +1,6 @@
 """
     function hsvi(
         game_file_path::String, epsilon::Float64;
-        lp_solver::Symbol = :glpk,
         ub_value_method::Symbol = :nn,
         stage_game_method::Symbol = :qre,
         normalize_rewards::Bool = true,
@@ -25,8 +24,6 @@ aiming for precision `epsilon`.
 # Parameters
     - game_file_path: path to the file with game definition
     - epsilon: desired precision with which the algorithm tries to solve the value of the game
-    - lp_solver: solver of linear programs; either `:glpk` for GLPK or `:gurobi` for Gurobi
-        (requires installed Gurobi binaries and valid license)
     - ub_value_method: implemetation for computing the value of the UB; either `:nn` for the
         approximative method using Neural networks or `:lp` for the exact method using Linear Programming
     - stage_game_method: implemetation for computing the value of stage game; either `:qre` for the
@@ -51,7 +48,6 @@ aiming for precision `epsilon`.
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
-    lp_solver::Symbol = :glpk,
     ub_value_method::Symbol = :nn,
     stage_game_method::Symbol = :qre,
     normalize_rewards::Bool = true,
@@ -135,7 +131,8 @@ function presolve_UB(context)
 
             prev_value = presolve_UB_value[s]
 
-            state_value_model = create_lp_model(context)
+            state_value_model = Model(GLPK.Optimizer)
+            JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
 
             @variable(state_value_model, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0)
             @variable(state_value_model, presolve_value)

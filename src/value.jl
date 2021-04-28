@@ -28,7 +28,8 @@ function UB_value_lp(partition, belief, context)
     upsilon_size = length(partition.upsilon)
     state_count = length(partition.states)
 
-    UB_value_model = create_lp_model(context)
+    UB_value_model = Model(GLPK.Optimizer)
+    JuMP.set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
 
     @variable(UB_value_model, lambda[i=1:upsilon_size] >= 0.0) # 33f
     @variable(UB_value_model, delta[si=1:state_count])

@@ -2,18 +2,9 @@ struct Context
     args::Args
     game::Game
     clock_start::Float64
-    gurobi_env::Union{Nothing,Gurobi.Env}
 end
 
-function Context(args, game)
-    if args.lp_solver == :gurobi
-        gurobi_env = Gurobi.Env()
-    else
-        gurobi_env = nothing
-    end
-
-    return Context(args, game, time(), gurobi_env)
-end
+Context(args, game) = Context(args, game, time())
 
 function Base.show(io::IO, context::Context)
     println(io, "Context:")

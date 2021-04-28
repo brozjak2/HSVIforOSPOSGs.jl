@@ -2,7 +2,6 @@ module HSVIforOneSidedPOSGs
 
 using Flux
 using GLPK
-using Gurobi
 using JuMP
 using LinearAlgebra
 using Logging

@@ -38,19 +38,21 @@ function Base.show(io::IO, partition::Partition)
     print(io, "Partition($(partition.index))")
 end
 
-function train_nn(partition, epochs, args)
-    @unpack nn_learning_rate = args
+function train_nn(partition, args)
+    @unpack nn_target_loss, nn_batch_size, nn_learning_rate  = args
 
     inputs = hcat(getfield.(partition.upsilon, 1)...)
     labels = hcat(getfield.(partition.upsilon, 2)...)
 
-    data = Flux.Data.DataLoader((inputs, labels), batchsize=length(partition.upsilon), shuffle=true)
     opt = ADAM(nn_learning_rate)
     ps = params(partition.nn)
 
     loss(x, y) = Flux.Losses.mse(partition.nn(x), y)
 
-    for i in 1:epochs
+    while loss(inputs, labels) > nn_target_loss
+        indexes = rand(1:length(partition.upsilon), nn_batch_size)
+        data = [(inputs[:, indexes], labels[:, indexes])]
+
         Flux.train!(loss, ps, data, opt)
     end
 end

@@ -12,14 +12,14 @@ function point_based_update(partition, belief, alpha, y, context)
 end
 
 function prune_and_retrain(partition, belief, y, args)
-    @unpack nn_retrain_epochs, ub_prunning_epsilon = args
+    @unpack ub_prunning_epsilon = args
 
     for (i, (beliefp, yp)) in enumerate(partition.upsilon)
         if isapprox(belief, beliefp; atol=ub_prunning_epsilon)
             if y < yp
                 deleteat!(partition.upsilon, i)
                 push!(partition.upsilon, (belief, y))
-                train_nn(partition, nn_retrain_epochs, args)
+                train_nn(partition, args)
             end
 
             return
@@ -27,7 +27,7 @@ function prune_and_retrain(partition, belief, y, args)
     end
 
     push!(partition.upsilon, (belief, y))
-    train_nn(partition, nn_retrain_epochs, args)
+    train_nn(partition, args)
 end
 
 function select_ao_pair(partition, belief, policy1, policy2, rho, context)
@@ -121,10 +121,9 @@ end
 
 function initial_nn_train(context)
     @unpack game, args = context
-    @unpack nn_train_epochs = args
 
     for partition in game.partitions
-        train_nn(partition, nn_train_epochs, args)
+        train_nn(partition, args)
 
         @debug @sprintf(
             "%7.3fs\tpartition %i NN trained",

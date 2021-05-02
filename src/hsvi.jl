@@ -5,16 +5,16 @@
         stage_game_method::Symbol = :qre,
         normalize_rewards::Bool = true,
         neigh_param_d::Float64 = 1e-6,
-        presolve_min_delta::Float64 = 1e-6,
-        presolve_time_limit::Float64 = 300.0,
+        presolve_min_delta::Float64 = 1e-3,
+        presolve_time_limit::Float64 = 60.0,
         qre_lambda::Float64 = 100.0,
-        qre_epsilon::Float64 = 1e-3,
-        qre_iter_limit::Int64 = 1_000,
-        qre_cache_epsilon::Float64 = 1e-5,
-        nn_train_epochs::Int64 = 10_000,
-        nn_retrain_epochs::Int64 = 1_000,
+        qre_epsilon::Float64 = 1e-2,
+        qre_iter_limit::Int64 = 100,
+        qre_cache_epsilon::Float64 = 1e-3,
+        nn_target_loss::Float64 = 1e-6,
+        nn_batch_size::Int64 = 128,
         nn_learning_rate::Float64 = 1e-2,
-        nn_neurons::Vector{Int64} = [12, 6],
+        nn_neurons::Vector{Int64} = [32, 16],
         ub_prunning_epsilon::Float64 = 1e-2
     )
 
@@ -40,8 +40,8 @@ aiming for precision `epsilon`.
         QRE by value larger than this, the QRE algorithm terminates
     - qre_iter_limit: iteration limit for the QRE algorithm solving stage game
     - qre_cache_epsilon: determines the imprecision that is allowed when caching bounds values in QRE algorithm
-    - nn_train_epochs: number of training epochs for the initial training of UB NNs
-    - nn_retrain_epochs: number of training epochs for the subsequent retrainings of UB NNs (after UB update)
+    - nn_target_loss: UB NNs target loss after which to stop training
+    - nn_batch_size: UB NNs batch size
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
     - nn_neurons: number of neurons in individual hidden layers of UB NNs
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
@@ -52,22 +52,22 @@ function hsvi(
     stage_game_method::Symbol = :qre,
     normalize_rewards::Bool = true,
     neigh_param_d::Float64 = 1e-6,
-    presolve_min_delta::Float64 = 1e-6,
-    presolve_time_limit::Float64 = 300.0,
+    presolve_min_delta::Float64 = 1e-3,
+    presolve_time_limit::Float64 = 60.0,
     qre_lambda::Float64 = 100.0,
-    qre_epsilon::Float64 = 1e-3,
-    qre_iter_limit::Int64 = 1_000,
-    qre_cache_epsilon::Float64 = 1e-5,
-    nn_train_epochs::Int64 = 10_000,
-    nn_retrain_epochs::Int64 = 1_000,
+    qre_epsilon::Float64 = 1e-2,
+    qre_iter_limit::Int64 = 100,
+    qre_cache_epsilon::Float64 = 1e-3,
+    nn_target_loss::Float64 = 1e-6,
+    nn_batch_size::Int64 = 128,
     nn_learning_rate::Float64 = 1e-2,
-    nn_neurons::Vector{Int64} = [12, 6],
+    nn_neurons::Vector{Int64} = [32, 16],
     ub_prunning_epsilon::Float64 = 1e-2
 )
     args = Args(
         game_file_path, epsilon, ub_value_method, stage_game_method, normalize_rewards,
         neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda, qre_epsilon,
-        qre_iter_limit, qre_cache_epsilon, nn_train_epochs, nn_retrain_epochs,
+        qre_iter_limit, qre_cache_epsilon, nn_target_loss, nn_batch_size,
         nn_learning_rate, nn_neurons, ub_prunning_epsilon
     )
     @debug args

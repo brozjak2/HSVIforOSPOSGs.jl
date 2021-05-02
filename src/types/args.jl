@@ -11,8 +11,8 @@ struct Args
     qre_epsilon::Float64
     qre_iter_limit::Int64
     qre_cache_epsilon::Float64
-    nn_train_epochs::Int64
-    nn_retrain_epochs::Int64
+    nn_target_loss::Float64
+    nn_batch_size::Int64
     nn_learning_rate::Float64
     nn_neurons::Vector{Int64}
     ub_prunning_epsilon::Float64

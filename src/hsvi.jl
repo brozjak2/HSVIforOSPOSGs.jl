@@ -10,7 +10,6 @@
         qre_lambda::Float64 = 100.0,
         qre_epsilon::Float64 = 1e-2,
         qre_iter_limit::Int64 = 100,
-        qre_cache_epsilon::Float64 = 1e-3,
         nn_target_loss::Float64 = 1e-6,
         nn_batch_size::Int64 = 128,
         nn_learning_rate::Float64 = 1e-2,
@@ -39,7 +38,6 @@ aiming for precision `epsilon`.
     - qre_epsilon: when policies of both players do not change between consecutive iterations of
         QRE by value larger than this, the QRE algorithm terminates
     - qre_iter_limit: iteration limit for the QRE algorithm solving stage game
-    - qre_cache_epsilon: determines the imprecision that is allowed when caching bounds values in QRE algorithm
     - nn_target_loss: UB NNs target loss after which to stop training
     - nn_batch_size: UB NNs batch size
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
@@ -57,7 +55,6 @@ function hsvi(
     qre_lambda::Float64 = 100.0,
     qre_epsilon::Float64 = 1e-2,
     qre_iter_limit::Int64 = 100,
-    qre_cache_epsilon::Float64 = 1e-3,
     nn_target_loss::Float64 = 1e-6,
     nn_batch_size::Int64 = 128,
     nn_learning_rate::Float64 = 1e-2,
@@ -67,8 +64,8 @@ function hsvi(
     args = Args(
         game_file_path, epsilon, ub_value_method, stage_game_method, normalize_rewards,
         neigh_param_d, presolve_min_delta, presolve_time_limit, qre_lambda, qre_epsilon,
-        qre_iter_limit, qre_cache_epsilon, nn_target_loss, nn_batch_size,
-        nn_learning_rate, nn_neurons, ub_prunning_epsilon
+        qre_iter_limit, nn_target_loss, nn_batch_size, nn_learning_rate, nn_neurons,
+        ub_prunning_epsilon
     )
     @debug args
 

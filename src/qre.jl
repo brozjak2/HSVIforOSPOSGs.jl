@@ -5,19 +5,6 @@ function compute_UB_qre(partition, belief, context)
     return policy1, policy2, dot(states_values, belief)
 end
 
-function get_cache_value(value_cache, value_func, target_partition, target_belief, context)
-    for ((partition, belief), value) in value_cache
-        if partition == target_partition.index && isapprox(belief, target_belief; atol=1e-4)
-            return value
-        end
-    end
-
-    value = value_func(target_partition, target_belief, context)
-    push!(value_cache, ((target_partition.index, target_belief), value))
-
-    return value
-end
-
 function compute_qre(partition, belief, context, value_func)
     @unpack game, args = context
     @unpack qre_lambda, qre_epsilon, qre_iter_limit = args
@@ -63,7 +50,7 @@ function compute_qre(partition, belief, context, value_func)
                 end
                 target_belief = target_belief ./ ao_prob
 
-                a1_values[a1i] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
+                a1_values[a1i] += discount_factor * ao_prob * value_func(target_partition, target_belief, context)
             end
         end
 
@@ -101,7 +88,7 @@ function compute_qre(partition, belief, context, value_func)
                     end
                     target_belief = target_belief ./ ao_prob
 
-                    a2_values[si][a2i] -= discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
+                    a2_values[si][a2i] -= discount_factor * ao_prob * value_func(target_partition, target_belief, context)
                 end
             end
         end

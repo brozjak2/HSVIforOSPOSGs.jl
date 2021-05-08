@@ -10,7 +10,6 @@ struct Args
     qre_lambda::Float64
     qre_epsilon::Float64
     qre_iter_limit::Int64
-    qre_cache_epsilon::Float64
     nn_target_loss::Float64
     nn_batch_size::Int64
     nn_learning_rate::Float64

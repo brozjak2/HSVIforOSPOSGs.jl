@@ -13,8 +13,9 @@
         nn_target_loss::Float64 = 1e-6,
         nn_batch_size::Int64 = 128,
         nn_learning_rate::Float64 = 1e-2,
-        nn_neurons::Vector{Int64} = [32, 16],
-        ub_prunning_epsilon::Float64 = 1e-2
+        nn_neurons::String = "32-16",
+        ub_prunning_epsilon::Float64 = 1e-2,
+        output_file::String = ""
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -41,8 +42,9 @@ aiming for precision `epsilon`.
     - nn_target_loss: UB NNs target loss after which to stop training
     - nn_batch_size: UB NNs batch size
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
-    - nn_neurons: number of neurons in individual hidden layers of UB NNs
+    - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
+    - output_file: path to which results are written; if empty no results are written
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -58,8 +60,9 @@ function hsvi(
     nn_target_loss::Float64 = 1e-6,
     nn_batch_size::Int64 = 128,
     nn_learning_rate::Float64 = 1e-2,
-    nn_neurons::Vector{Int64} = [32, 16],
-    ub_prunning_epsilon::Float64 = 1e-2
+    nn_neurons::String = "32-16",
+    ub_prunning_epsilon::Float64 = 1e-3,
+    output_file::String = ""
 )
     args = Args(
         game_file_path, epsilon, ub_value_method, stage_game_method, normalize_rewards,
@@ -101,6 +104,10 @@ function hsvi(
         UB_value(context),
         width(context)
     )
+
+    if output_file != ""
+        save_results(output_file, context)
+    end
 
     return context
 end
@@ -250,15 +257,13 @@ function solve(context)
     @unpack epsilon, neigh_param_d = args
     @unpack init_partition, init_belief = game
 
-    iteration = 0
     while excess(init_partition, init_belief, epsilon, context) > 0
-        log_progress(context, iteration)
+        log_progress(context)
         explore(init_partition, init_belief, epsilon, context, 0)
+        @debug "max_depth = $(context.exploration_depths[end])"
 
-        iteration += 1;
+        context.exploration_count += 1
     end
-
-    return game
 end
 
 function explore(partition, belief, rho, context, depth)
@@ -282,18 +287,18 @@ function explore(partition, belief, rho, context, depth)
 
         point_based_update(partition, belief, alpha, y, context)
     else
-        @debug "max depth: $depth"
+        push!(context.exploration_depths, depth)
     end
 end
 
-function log_progress(context, iteration)
-    @unpack game, clock_start = context
+function log_progress(context)
+    @unpack game, exploration_count, clock_start = context
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
     @info @sprintf(
         "%4d:\t%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\t%5d\t%5d",
-        iteration,
+        exploration_count,
         time() - clock_start,
         LB_value(context),
         UB_value(context),
@@ -301,4 +306,46 @@ function log_progress(context, iteration)
         global_gamma_size,
         global_upsilon_size
     )
+end
+
+function save_results(output_file, context)
+    @unpack args, game, exploration_count, exploration_depths, clock_start = context
+    global_gamma_size = sum(length(p.gamma) for p in game.partitions)
+    global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
+
+    mkpath(splitdir(output_file)[1])
+    open(output_file, "w") do file
+        args_heading_string = join(fieldnames(Args), ",")
+        result_heading_string = join(
+            [
+                "time",
+                "lb_value",
+                "ub_value",
+                "width",
+                "gamma_size",
+                "upsilon_size",
+                "exploration_count",
+                "average_depth"
+            ],
+            ","
+        )
+
+        args_string = join([getfield(args, field) for field in fieldnames(Args)], ",")
+        result_string = join(
+            Any[
+                time() - clock_start,
+                LB_value(context),
+                UB_value(context),
+                width(context),
+                global_gamma_size,
+                global_upsilon_size,
+                exploration_count,
+                sum(exploration_depths) / length(exploration_depths)
+            ],
+            ","
+        )
+
+        write(file, args_heading_string * "," * result_heading_string * "\n")
+        write(file, args_string * "," * result_string * "\n")
+    end
 end

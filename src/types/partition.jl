@@ -63,7 +63,7 @@ function create_partition_nn(input_neurons, args)
     in_neurons = input_neurons
     dense_layers = []
 
-    for layer_neurons in nn_neurons
+    for layer_neurons in [parse(Int64, x) for x in split(nn_neurons, "-")]
         push!(dense_layers, Dense(in_neurons, layer_neurons, σ))
         in_neurons = layer_neurons
     end

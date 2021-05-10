@@ -13,7 +13,7 @@ struct Args
     nn_target_loss::Float64
     nn_batch_size::Int64
     nn_learning_rate::Float64
-    nn_neurons::Vector{Int64}
+    nn_neurons::String
     ub_prunning_epsilon::Float64
 end
 

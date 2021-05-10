@@ -141,7 +141,7 @@ function compute_LB(partition, belief, context)
     elseif stage_game_method == :qre
         return compute_LB_qre(partition, belief, context)
     else
-        hrow(InvalidArgumentValue("stage_game_method", stage_game_method))
+        throw(InvalidArgumentValue("stage_game_method", stage_game_method))
     end
 end
 

@@ -15,6 +15,7 @@
         nn_learning_rate::Float64 = 1e-2,
         nn_neurons::String = "32-16",
         ub_prunning_epsilon::Float64 = 1e-2,
+        time_limit::Float64 = 3600.0,
         output_file::String = ""
     )
 
@@ -44,6 +45,7 @@ aiming for precision `epsilon`.
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
     - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
+    - time_limit: = time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
     - output_file: path to which results are written; if empty no results are written
 """
 function hsvi(
@@ -62,6 +64,7 @@ function hsvi(
     nn_learning_rate::Float64 = 1e-2,
     nn_neurons::String = "32-16",
     ub_prunning_epsilon::Float64 = 1e-3,
+    time_limit::Float64 = 3600.0,
     output_file::String = ""
 )
     args = Args(
@@ -96,7 +99,7 @@ function hsvi(
         LB_value(context)
     )
 
-    solve(context)
+    solve(context, time_limit)
     @info @sprintf(
         "%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\tGame solved",
         time() - context.clock_start,
@@ -252,18 +255,25 @@ function presolve_LB(context)
     end
 end
 
-function solve(context)
-    @unpack args, game = context
+function solve(context, time_limit)
+    @unpack args, game, exploration_count, clock_start = context
     @unpack epsilon, neigh_param_d = args
     @unpack init_partition, init_belief = game
 
     while excess(init_partition, init_belief, epsilon, context) > 0
         log_progress(context)
+
+        exploration_count += 1
         explore(init_partition, init_belief, epsilon, context, 0)
         @debug "max_depth = $(context.exploration_depths[end])"
 
-        context.exploration_count += 1
+        if time() - clock_start >= time_limit
+            @warn "reached 1h time limit and did not converge, killed"
+            break
+        end
     end
+
+    log_progress(context)
 end
 
 function explore(partition, belief, rho, context, depth)

@@ -81,6 +81,7 @@ function hsvi(
 
     context = Context(args, game)
     check_neigh_param_d(context)
+    flush_logs()
 
     presolve_UB(context)
     if ub_value_method == :nn
@@ -91,6 +92,7 @@ function hsvi(
         time() - context.clock_start,
         UB_value(context)
     )
+    flush_logs()
 
     presolve_LB(context)
     @info @sprintf(
@@ -98,6 +100,7 @@ function hsvi(
         time() - context.clock_start,
         LB_value(context)
     )
+    flush_logs()
 
     solve(context, time_limit)
     @info @sprintf(
@@ -107,6 +110,7 @@ function hsvi(
         UB_value(context),
         width(context)
     )
+    flush_logs()
 
     if output_dir != ""
         save_results(output_dir, context)
@@ -262,10 +266,12 @@ function solve(context, time_limit)
 
     while excess(init_partition, init_belief, epsilon, context) > 0
         log_progress(context)
+        flush_logs()
 
         context.exploration_count += 1
         explore(init_partition, init_belief, epsilon, context, 0)
         @debug "max_depth = $(exploration_depths[end])"
+        flush_logs()
 
         if time() - clock_start >= time_limit
             @warn "reached 1h time limit and did not converge, killed"

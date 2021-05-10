@@ -156,3 +156,5 @@ function compute_UB(partition, belief, context)
         hrow(InvalidArgumentValue("stage_game_method", stage_game_method))
     end
 end
+
+flush_logs() = flush(global_logger().stream)

@@ -16,7 +16,7 @@
         nn_neurons::String = "32-16",
         ub_prunning_epsilon::Float64 = 1e-2,
         time_limit::Float64 = 3600.0,
-        output_file::String = ""
+        output_dir::String = ""
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -46,7 +46,7 @@ aiming for precision `epsilon`.
     - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
     - time_limit: = time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
-    - output_file: path to which results are written; if empty no results are written
+    - output_dir: directory to which results are written; if empty no results are written
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -65,7 +65,7 @@ function hsvi(
     nn_neurons::String = "32-16",
     ub_prunning_epsilon::Float64 = 1e-3,
     time_limit::Float64 = 3600.0,
-    output_file::String = ""
+    output_dir::String = ""
 )
     args = Args(
         game_file_path, epsilon, ub_value_method, stage_game_method, normalize_rewards,
@@ -108,8 +108,8 @@ function hsvi(
         width(context)
     )
 
-    if output_file != ""
-        save_results(output_file, context)
+    if output_dir != ""
+        save_results(output_dir, context)
     end
 
     return context
@@ -256,16 +256,16 @@ function presolve_LB(context)
 end
 
 function solve(context, time_limit)
-    @unpack args, game, exploration_count, clock_start = context
+    @unpack args, game, exploration_depths, clock_start = context
     @unpack epsilon, neigh_param_d = args
     @unpack init_partition, init_belief = game
 
     while excess(init_partition, init_belief, epsilon, context) > 0
         log_progress(context)
 
-        exploration_count += 1
+        context.exploration_count += 1
         explore(init_partition, init_belief, epsilon, context, 0)
-        @debug "max_depth = $(context.exploration_depths[end])"
+        @debug "max_depth = $(exploration_depths[end])"
 
         if time() - clock_start >= time_limit
             @warn "reached 1h time limit and did not converge, killed"
@@ -318,12 +318,16 @@ function log_progress(context)
     )
 end
 
-function save_results(output_file, context)
+function save_results(output_dir, context)
     @unpack args, game, exploration_count, exploration_depths, clock_start = context
     global_gamma_size = sum(length(p.gamma) for p in game.partitions)
     global_upsilon_size = sum(length(p.upsilon) for p in game.partitions)
 
-    mkpath(splitdir(output_file)[1])
+    mkpath(output_dir)
+    args_fields = [getfield(args, field) for field in fieldnames(Args)]
+    filename = join(splitpath(args.game_file_path), "-")[1:end-5] * "-" * join(args_fields[2:end], "-") * ".csv"
+    output_file = joinpath(output_dir, filename)
+
     open(output_file, "w") do file
         args_heading_string = join(fieldnames(Args), ",")
         result_heading_string = join(

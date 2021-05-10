@@ -141,7 +141,7 @@ function compute_qre(partition, belief, context, value_func)
             end
             target_belief = target_belief ./ ao_prob
 
-            states_values[si] += discount_factor * ao_prob * get_cache_value(value_cache, value_func, target_partition, target_belief, context)
+            states_values[si] += discount_factor * ao_prob * value_func(target_partition, target_belief, context)
         end
     end
 

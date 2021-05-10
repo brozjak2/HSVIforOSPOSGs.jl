@@ -14,7 +14,7 @@ function UB_value(partition, belief, context)
     elseif ub_value_method == :nn
         return UB_value_nn(partition, belief)
     else
-        hrow(InvalidArgumentValue("ub_value_method", ub_value_method))
+        throw(InvalidArgumentValue("ub_value_method", ub_value_method))
     end
 end
 

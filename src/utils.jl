@@ -153,7 +153,7 @@ function compute_UB(partition, belief, context)
     elseif stage_game_method == :qre
         return compute_UB_qre(partition, belief, context)
     else
-        hrow(InvalidArgumentValue("stage_game_method", stage_game_method))
+        throw(InvalidArgumentValue("stage_game_method", stage_game_method))
     end
 end
 

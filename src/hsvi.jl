@@ -1,8 +1,8 @@
 """
     function hsvi(
         game_file_path::String, epsilon::Float64;
-        ub_value_method::Symbol = :nn,
-        stage_game_method::Symbol = :qre,
+        ub_value_method::Symbol = :lp,
+        stage_game_method::Symbol = :lp,
         normalize_rewards::Bool = true,
         neigh_param_d::Float64 = 1e-6,
         presolve_min_delta::Float64 = 1e-3,
@@ -48,8 +48,8 @@ aiming for precision `epsilon`.
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
-    ub_value_method::Symbol = :nn,
-    stage_game_method::Symbol = :qre,
+    ub_value_method::Symbol = :lp,
+    stage_game_method::Symbol = :lp,
     normalize_rewards::Bool = true,
     neigh_param_d::Float64 = 1e-6,
     presolve_min_delta::Float64 = 1e-3,

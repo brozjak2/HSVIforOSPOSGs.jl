@@ -1,28 +1,26 @@
-LB_value(context) = LB_value(context.game.init_partition, context.game.init_belief, context)
+LB_value(context) = LB_value(context, context.game.init_partition, context.game.init_belief)
 
-function LB_value(partition, belief, context)
+function LB_value(context, partition, belief)
     return maximum(dot(alpha, belief) for alpha in partition.gamma)
 end
 
-UB_value(context) = UB_value(context.game.init_partition, context.game.init_belief, context)
+UB_value(context) = UB_value(context, context.game.init_partition, context.game.init_belief)
 
-function UB_value(partition, belief, context)
+function UB_value(context, partition, belief)
     @unpack ub_value_method = context.args
 
     if ub_value_method == :lp
-        return UB_value_lp(partition, belief, context)
+        return UB_value_lp(context, partition, belief)
     elseif ub_value_method == :nn
-        return UB_value_nn(partition, belief)
-    else
-        throw(InvalidArgumentValue("ub_value_method", ub_value_method))
+        return UB_value_nn(context, partition, belief)
     end
 end
 
-function UB_value_nn(partition, belief)
+function UB_value_nn(context, partition, belief)
     return partition.nn(belief)[1]
 end
 
-function UB_value_lp(partition, belief, context)
+function UB_value_lp(context, partition, belief)
     @unpack lipschitz_delta = context.game
 
     upsilon_size = length(partition.upsilon)
@@ -62,8 +60,8 @@ function UB_value_lp(partition, belief, context)
     return objective_value(UB_value_model)
 end
 
-width(context) = width(context.game.init_partition, context.game.init_belief, context)
+width(context) = UB_value(context) - LB_value(context)
 
-function width(partition, belief, context)
-    return UB_value(partition, belief, context) - LB_value(partition, belief, context)
+function width(context, partition, belief)
+    return UB_value(context, partition, belief) - LB_value(context, partition, belief)
 end

@@ -17,7 +17,7 @@ mutable struct Partition
     nn::Chain
 end
 
-function Partition(index, states, leader_actions, leader_action_index_table, args)
+function Partition(index, states, leader_actions, leader_action_index_table, nn_neurons)
     return Partition(
         index,
         states,
@@ -30,45 +30,10 @@ function Partition(index, states, leader_actions, leader_action_index_table, arg
         Dict{Tuple{Int64,Int64,Int64},Vector{Transition}}([]),
         Dict{Tuple{Int64,Int64},Vector{Transition}}([]),
         Dict{Tuple{Int64,Int64},Int64}([]),
-        create_partition_nn(length(states), args)
+        create_partition_nn(length(states), nn_neurons)
     )
 end
 
 function Base.show(io::IO, partition::Partition)
     print(io, "Partition($(partition.index))")
-end
-
-function train_nn(partition, args)
-    @unpack nn_target_loss, nn_batch_size, nn_learning_rate  = args
-
-    inputs = hcat(getfield.(partition.upsilon, 1)...)
-    labels = hcat(getfield.(partition.upsilon, 2)...)
-
-    opt = ADAM(nn_learning_rate)
-    ps = Flux.params(partition.nn)
-
-    loss(x, y) = Flux.Losses.mse(partition.nn(x), y)
-
-    while loss(inputs, labels) > nn_target_loss
-        indexes = rand(1:length(partition.upsilon), nn_batch_size)
-        data = [(inputs[:, indexes], labels[:, indexes])]
-
-        Flux.train!(loss, ps, data, opt)
-    end
-end
-
-function create_partition_nn(input_neurons, args)
-    @unpack nn_neurons = args
-
-    in_neurons = input_neurons
-    dense_layers = []
-
-    for layer_neurons in [parse(Int64, x) for x in split(nn_neurons, "-")]
-        push!(dense_layers, Dense(in_neurons, layer_neurons, σ))
-        in_neurons = layer_neurons
-    end
-
-    push!(dense_layers, Dense(in_neurons, 1))
-
-    return Chain(dense_layers...)
 end

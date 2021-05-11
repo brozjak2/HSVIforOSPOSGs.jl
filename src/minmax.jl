@@ -1,4 +1,4 @@
-function compute_LB_primal(partition, belief, context)
+function compute_LB_primal(context, partition, belief)
     @unpack game = context
     @unpack discount_factor, states, partitions = game
 
@@ -44,7 +44,7 @@ function compute_LB_primal(partition, belief, context)
     return policy1, policy2_conditional, value.(LB_primal[:statevalue]).data
 end
 
-function compute_UB_dual(partition, belief, context)
+function compute_UB_dual(context, partition, belief)
     @unpack game = context
     @unpack discount_factor, states, partitions = game
 

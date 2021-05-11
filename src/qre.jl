@@ -1,11 +1,11 @@
-compute_LB_qre(partition, belief, context) = compute_qre(partition, belief, context, LB_value)
+compute_LB_qre(context, partition, belief) = compute_qre(context, partition, belief, LB_value)
 
-function compute_UB_qre(partition, belief, context)
-    policy1, policy2, states_values = compute_qre(partition, belief, context, UB_value)
+function compute_UB_qre(context, partition, belief)
+    policy1, policy2, states_values = compute_qre(context, partition, belief, UB_value)
     return policy1, policy2, dot(states_values, belief)
 end
 
-function compute_qre(partition, belief, context, value_func)
+function compute_qre(context, partition, belief, value_func)
     @unpack game, args = context
     @unpack qre_lambda, qre_epsilon, qre_iter_limit = args
     @unpack discount_factor, states, partitions, state_index_table = game
@@ -59,7 +59,7 @@ function compute_qre(partition, belief, context, value_func)
                 end
                 target_belief = target_belief ./ ao_prob
 
-                a1_values[a1i] += discount_factor * ao_prob * value_func(target_partition, target_belief, context)
+                a1_values[a1i] += discount_factor * ao_prob * value_func(context, target_partition, target_belief)
             end
         end
 
@@ -103,7 +103,7 @@ function compute_qre(partition, belief, context, value_func)
                     end
                     target_belief = target_belief ./ ao_prob
 
-                    a2_values[si][a2i] -= discount_factor * ao_prob * value_func(target_partition, target_belief, context)
+                    a2_values[si][a2i] -= discount_factor * ao_prob * value_func(context, target_partition, target_belief)
                 end
             end
         end
@@ -166,7 +166,7 @@ function compute_qre(partition, belief, context, value_func)
             end
             target_belief = target_belief ./ ao_prob
 
-            states_values[si] += discount_factor * ao_prob * value_func(target_partition, target_belief, context)
+            states_values[si] += discount_factor * ao_prob * value_func(context, target_partition, target_belief)
         end
     end
 

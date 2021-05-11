@@ -23,10 +23,11 @@ end
 
 function Game(parsed_game_definition, args)
     @unpack game_params, states_names, states_partitions, leader_actions_names,
-        follower_actions_names, observations_names, follower_actions, leader_actions,
-        transitions, rewards, init_partition_index, init_belief = parsed_game_definition
+    follower_actions_names, observations_names, follower_actions, leader_actions,
+    transitions, rewards, init_partition_index, init_belief = parsed_game_definition
     @unpack state_count, partition_count, leader_action_count, follower_action_count,
-        observation_count, transition_count, reward_count, discount_factor = game_params
+    observation_count, transition_count, reward_count, discount_factor = game_params
+    @unpack nn_neurons = args
 
     minimal_reward = minimum([reward.r for reward in rewards])
     maximal_reward = maximum([reward.r for reward in rewards])
@@ -45,8 +46,7 @@ function Game(parsed_game_definition, args)
         follower_action_index_table = Dict(a2 => a2i for (a2i, a2) in enumerate(follower_actions[s]))
         state_index_table[s] = length(partitions_states[p])
         states[s] = State(
-            s, p, state_index_table[s], follower_actions[s], follower_action_index_table,
-            states_names[s]
+            s, p, state_index_table[s], follower_actions[s], follower_action_index_table, states_names[s]
         )
     end
 
@@ -54,7 +54,7 @@ function Game(parsed_game_definition, args)
     for p in 1:partition_count
         leader_action_index_table = Dict(a1 => a1i for (a1i, a1) in enumerate(leader_actions[p]))
         partitions[p] = Partition(
-            p, partitions_states[p], leader_actions[p], leader_action_index_table, args
+            p, partitions_states[p], leader_actions[p], leader_action_index_table, nn_neurons
         )
     end
     init_partition = partitions[init_partition_index]

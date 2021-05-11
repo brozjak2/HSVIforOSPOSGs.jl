@@ -1,6 +1,6 @@
 function presolve_UB(context)
     @unpack args, game = context
-    @unpack presolve_min_delta, presolve_time_limit = args
+    @unpack presolve_min_delta, presolve_time_limit, ub_value_method = args
     @unpack partitions, states = game
 
     clock_start = time()
@@ -30,7 +30,10 @@ function presolve_UB(context)
             @objective(state_value_model, Max, presolve_value)
 
             @constraint(state_value_model, [a2=state.follower_actions],
-                presolve_value <= sum(policy1[a1] * presolve_UB_utility(game, presolve_UB_value, s, a1, a2) for a1 in partition.leader_actions))
+                presolve_value <= sum(
+                    policy1[a1] * presolve_UB_utility(context, presolve_UB_value, s, a1, a2)
+                    for a1 in partition.leader_actions
+                ))
 
             @constraint(state_value_model,
                 sum(policy1[a1] for a1 in partition.leader_actions) == 1.0)
@@ -60,10 +63,16 @@ function presolve_UB(context)
             push!(partition.upsilon, (belief, presolve_UB_value[s]))
         end
     end
+
+    if ub_value_method == :nn
+        initial_nn_train(context)
+    end
+
+    log_presolveUB(context)
 end
 
-function presolve_UB_utility(game, presolve_UB_value, s, a1, a2)
-    @unpack partitions, states, discount_factor = game
+function presolve_UB_utility(context, presolve_UB_value, s, a1, a2)
+    @unpack partitions, states, discount_factor = context.game
 
     partition = partitions[states[s].partition]
     immediate_reward = partition.rewards[(s, a1, a2)]
@@ -136,4 +145,6 @@ function presolve_LB(context)
     else
         @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)
     end
+
+    log_presolveLB(context)
 end

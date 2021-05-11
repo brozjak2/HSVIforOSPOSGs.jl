@@ -10,7 +10,7 @@
         qre_lambda::Float64 = 100.0,
         qre_epsilon::Float64 = 1e-2,
         qre_iter_limit::Int64 = 100,
-        nn_target_loss::Float64 = 1e-6,
+        nn_target_loss::Float64 = 1e-4,
         nn_batch_size::Int64 = 64,
         nn_learning_rate::Float64 = 1e-2,
         nn_neurons::String = "32-16-8",
@@ -48,7 +48,7 @@ aiming for precision `epsilon`.
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning in UB update
     - time_limit: time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
     - output_dir: directory to which results are written; if empty no results are written
-    - seed: integer seed for the random generator
+    - seed: seed for the random number generator
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -61,7 +61,7 @@ function hsvi(
     qre_lambda::Float64 = 100.0,
     qre_epsilon::Float64 = 1e-2,
     qre_iter_limit::Int64 = 100,
-    nn_target_loss::Float64 = 1e-6,
+    nn_target_loss::Float64 = 1e-4,
     nn_batch_size::Int64 = 64,
     nn_learning_rate::Float64 = 1e-2,
     nn_neurons::String = "32-16-8",
@@ -86,6 +86,8 @@ function hsvi(
     presolve_LB(context)
 
     solve(context, time_limit)
+
+    log_results(context, output_dir)
 
     return context
 end

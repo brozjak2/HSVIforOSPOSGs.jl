@@ -26,6 +26,19 @@ function compute_qre(partition, belief, context, value_func)
         for a1 in partition.leader_actions
             a1i = partition.leader_action_index_table[a1]
 
+            # Immediate reward
+            for s in partition.states
+                state = states[s]
+                si = state.belief_index
+
+                for a2 in state.follower_actions
+                    a2i = state.follower_action_index_table[a2]
+
+                    a1_values[a1i] += belief[si] * policy2[si][a2i] * partition.rewards[(s, a1, a2)]
+                end
+            end
+
+            # Discounted values in subsequent beliefs
             for o in partition.observations[a1]
                 target_partition = partitions[partition.partition_transitions[(a1, o)]]
                 target_belief = zeros(length(target_partition.states))
@@ -39,8 +52,6 @@ function compute_qre(partition, belief, context, value_func)
                     t_prob = belief[s_index] * policy2[s_index][a2_index] * t.p
                     ao_prob += t_prob
                     target_belief[sp_index] += t_prob
-
-                    a1_values[a1i] += t_prob * partition.rewards[(t.s, t.a1, t.a2)]
                 end
 
                 if ao_prob == 0.0
@@ -60,6 +71,14 @@ function compute_qre(partition, belief, context, value_func)
             for a2 in state.follower_actions
                 a2i = state.follower_action_index_table[a2]
 
+                # Immediate reward
+                for a1 in partition.leader_actions
+                    a1i = partition.leader_action_index_table[a1]
+
+                    a2_values[si][a2i] -= policy1[a1i] * partition.rewards[(s, a1, a2)]
+                end
+
+                # Discounted values in subsequent beliefs
                 for a1 in partition.leader_actions, o in partition.observations[a1]
                     target_partition = partitions[partition.partition_transitions[(a1, o)]]
                     target_belief = zeros(length(target_partition.states))
@@ -77,8 +96,6 @@ function compute_qre(partition, belief, context, value_func)
                         t_prob = policy1[a1_index] * t.p
                         ao_prob += t_prob
                         target_belief[sp_index] += t_prob
-
-                        a2_values[si][a2i] -= t_prob * partition.rewards[(t.s, t.a1, t.a2)]
                     end
 
                     if ao_prob == 0.0
@@ -112,6 +129,18 @@ function compute_qre(partition, belief, context, value_func)
         state = states[s]
         si = game.state_index_table[s]
 
+        # Immediate reward
+        for a1 in partition.leader_actions
+            a1i = partition.leader_action_index_table[a1]
+
+            for a2 in state.follower_actions
+                a2i = state.follower_action_index_table[a2]
+
+                states_values[si] += policy1[a1i] * policy2[si][a2i] * partition.rewards[(s, a1, a2)]
+            end
+        end
+
+        # Discounted values in subsequent beliefs
         for a1 in partition.leader_actions, o in partition.observations[a1]
             target_partition = partitions[partition.partition_transitions[(a1, o)]]
             target_belief = zeros(length(target_partition.states))
@@ -130,8 +159,6 @@ function compute_qre(partition, belief, context, value_func)
                 t_prob = policy1[a1_index] * policy2[s_index][a2_index] * t.p
                 ao_prob += t_prob
                 target_belief[sp_index] += t_prob
-
-                states_values[si] += t_prob * partition.rewards[(t.s, t.a1, t.a2)]
             end
 
             if ao_prob == 0.0

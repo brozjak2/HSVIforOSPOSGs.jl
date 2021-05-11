@@ -11,13 +11,15 @@ using Printf
 
 export hsvi
 
-include("exceptions.jl")
 include("types.jl")
-include("load.jl")
-include("value.jl")
-include("utils.jl")
-include("qre.jl")
-include("linear_programs.jl")
+
+include("exceptions.jl")
 include("hsvi.jl")
+include("linear_programs.jl")
+include("load.jl")
+include("presolve.jl")
+include("qre.jl")
+include("utils.jl")
+include("value.jl")
 
 end

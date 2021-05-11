@@ -39,57 +39,36 @@ function select_ao_pair(partition, belief, policy1, policy2, rho, context)
 
     weighted_excess_gaps = zeros(length(partition.observations[a1]))
     for (oi, o) in enumerate(partition.observations[a1])
-        target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o, context)
         target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
+        target_belief = zeros(length(target_partition.states))
+        ao_prob = 0.0
 
-        ao_prob = ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
-        excess_gap = excess(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context)
+        for t in partition.ao_pair_transitions[(a1, o)]
+            a1_index = partition.leader_action_index_table[t.a1]
+            a2_index = states[t.s].follower_action_index_table[t.a2]
+            s_index = state_index_table[t.s]
+            sp_index = state_index_table[t.sp]
 
-        weighted_excess_gaps[oi] = ao_prob * excess_gap
+            t_prob = belief[s_index] * policy1[a1_index] * policy2[s_index][a2_index] * t.p
+
+            ao_prob += t_prob
+            target_belief[sp_index] += t_prob
+        end
+
+        if ao_prob == 0.0
+            weighted_excess_gaps[oi] = 0.0
+        else
+            target_belief = (1.0 / ao_prob) .* target_belief
+            excess_gap = excess(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context)
+
+            weighted_excess_gaps[oi] = ao_prob * excess_gap
+        end
     end
 
     max_weighted_excess_gap, oi = findmax(weighted_excess_gaps)
     o = partition.observations[a1][oi]
 
     return max_weighted_excess_gap, (a1, o)
-end
-
-function get_target_belief(partition, belief, policy1, policy2, a1, o, context)
-    @unpack game = context
-    @unpack states, partitions, state_index_table = game
-
-    ao_inverse_prob = 1 / ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
-    ao_inverse_prob = isinf(ao_inverse_prob) ? zero(ao_inverse_prob) : ao_inverse_prob # handle division by zero
-
-    target_partition = partitions[partition.partition_transitions[(a1, o)]]
-    target_belief = zeros(length(target_partition.states))
-    for t in partition.ao_pair_transitions[(a1, o)]
-        a1_index = partition.leader_action_index_table[a1]
-        a2_index = states[t.s].follower_action_index_table[t.a2]
-
-        s_index = state_index_table[t.s]
-        sp_index = state_index_table[t.sp]
-        target_belief[sp_index] += belief[s_index] * policy1[a1_index] * policy2[s_index][a2_index] * t.p
-    end
-
-    return ao_inverse_prob * target_belief
-end
-
-function ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
-    @unpack game = context
-    @unpack states, state_index_table = game
-
-    ao_pair_probability = 0
-    for t in partition.ao_pair_transitions[(a1, o)]
-        a1_index = partition.leader_action_index_table[a1]
-        a2_index = states[t.s].follower_action_index_table[t.a2]
-
-        s_index = state_index_table[t.s]
-        sp_index = state_index_table[t.sp]
-        ao_pair_probability += belief[s_index] * policy1[a1_index] * policy2[s_index][a2_index] * t.p
-    end
-
-    return ao_pair_probability
 end
 
 function excess(partition, belief, rho, context)

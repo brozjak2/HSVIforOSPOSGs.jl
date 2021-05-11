@@ -1,5 +1,6 @@
 module HSVIforOneSidedPOSGs
 
+using Distributions
 using Flux
 using GLPK
 using JuMP

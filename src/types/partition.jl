@@ -45,7 +45,7 @@ function train_nn(partition, args)
     labels = hcat(getfield.(partition.upsilon, 2)...)
 
     opt = ADAM(nn_learning_rate)
-    ps = params(partition.nn)
+    ps = Flux.params(partition.nn)
 
     loss(x, y) = Flux.Losses.mse(partition.nn(x), y)
 

@@ -34,18 +34,22 @@ function select_ao_pair(partition, belief, policy1, policy2, rho, context)
     @unpack game, args = context
     @unpack neigh_param_d = args
 
-    weighted_excess_gaps = Dict([])
-    for a1 in partition.leader_actions, o in partition.observations[a1]
+    a1_distribution = Categorical(policy1)
+    a1 = partition.leader_actions[rand(a1_distribution)]
+
+    weighted_excess_gaps = zeros(length(partition.observations[a1]))
+    for (oi, o) in enumerate(partition.observations[a1])
         target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o, context)
         target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
 
         ao_prob = ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
         excess_gap = excess(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context)
 
-        weighted_excess_gaps[(a1, o)] = ao_prob * excess_gap
+        weighted_excess_gaps[oi] = ao_prob * excess_gap
     end
 
-    max_weighted_excess_gap, (a1, o) = findmax(weighted_excess_gaps)
+    max_weighted_excess_gap, oi = findmax(weighted_excess_gaps)
+    o = partition.observations[a1][oi]
 
     return max_weighted_excess_gap, (a1, o)
 end

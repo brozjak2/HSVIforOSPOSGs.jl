@@ -44,8 +44,8 @@ aiming for precision `epsilon`.
     - nn_batch_size: UB NNs batch size
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
     - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
-    - ub_prunning_epsilon: neighborhood of this size is searched when prunning after UB update
-    - time_limit: = time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
+    - ub_prunning_epsilon: neighborhood of this size is searched when prunning in UB update
+    - time_limit: time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
     - output_dir: directory to which results are written; if empty no results are written
 """
 function hsvi(
@@ -60,10 +60,10 @@ function hsvi(
     qre_epsilon::Float64 = 1e-2,
     qre_iter_limit::Int64 = 100,
     nn_target_loss::Float64 = 1e-6,
-    nn_batch_size::Int64 = 128,
+    nn_batch_size::Int64 = 64,
     nn_learning_rate::Float64 = 1e-2,
-    nn_neurons::String = "32-16",
-    ub_prunning_epsilon::Float64 = 1e-3,
+    nn_neurons::String = "32-16-8",
+    ub_prunning_epsilon::Float64 = 1e-1,
     time_limit::Float64 = 3600.0,
     output_dir::String = ""
 )
@@ -102,13 +102,14 @@ function hsvi(
     )
     flush_logs()
 
-    solve(context, time_limit)
+    success = solve(context, time_limit)
     @info @sprintf(
-        "%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\tGame solved",
+        "%7.3fs\t%+7.5f\t%+7.5f\t%+7.5f\t%s",
         time() - context.clock_start,
         LB_value(context),
         UB_value(context),
-        width(context)
+        width(context),
+        success ? "Converged" : "Did not converge"
     )
     flush_logs()
 
@@ -275,11 +276,13 @@ function solve(context, time_limit)
 
         if time() - clock_start >= time_limit
             @warn "reached 1h time limit and did not converge, killed"
-            break
+            log_progress(context)
+            return false
         end
     end
 
     log_progress(context)
+    return true
 end
 
 function explore(partition, belief, rho, context, depth)
@@ -291,11 +294,12 @@ function explore(partition, belief, rho, context, depth)
 
     point_based_update(partition, belief, alpha, y, context)
 
-    a1, o = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho, context)
-    target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
+    weighted_excess_gap, (a1, o) = select_ao_pair(partition, belief, UB_leader_policy, LB_follower_policy, rho, context)
 
-    if weighted_excess(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, rho, context) > 0
+    if weighted_excess_gap > 0
+        target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
         target_belief = get_target_belief(partition, belief, UB_leader_policy, LB_follower_policy, a1, o, context)
+
         explore(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context, depth + 1)
 
         _, _, alpha = compute_LB(partition, belief, context)

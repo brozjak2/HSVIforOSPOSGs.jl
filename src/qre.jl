@@ -10,8 +10,6 @@ function compute_qre(partition, belief, context, value_func)
     @unpack qre_lambda, qre_epsilon, qre_iter_limit = args
     @unpack discount_factor, states, partitions, state_index_table = game
 
-    value_cache = Vector{Tuple{Tuple{Int64,Vector{Float64}},Float64}}(undef, 0)
-
     leader_action_count = length(partition.leader_actions)
 
     policy1_old = zeros(leader_action_count)

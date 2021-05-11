@@ -31,24 +31,23 @@ function prune_and_retrain(partition, belief, y, args)
 end
 
 function select_ao_pair(partition, belief, policy1, policy2, rho, context)
+    @unpack game, args = context
+    @unpack neigh_param_d = args
+
     weighted_excess_gaps = Dict([])
     for a1 in partition.leader_actions, o in partition.observations[a1]
-        weighted_excess_gaps[(a1, o)] = weighted_excess(partition, belief, policy1, policy2, a1, o, rho, context)
+        target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o, context)
+        target_partition = game.partitions[partition.partition_transitions[(a1, o)]]
+
+        ao_prob = ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
+        excess_gap = excess(target_partition, target_belief, next_rho(rho, game, neigh_param_d), context)
+
+        weighted_excess_gaps[(a1, o)] = ao_prob * excess_gap
     end
 
-    _, (a1, o) = findmax(weighted_excess_gaps)
+    max_weighted_excess_gap, (a1, o) = findmax(weighted_excess_gaps)
 
-    return a1, o
-end
-
-function weighted_excess(partition, belief, policy1, policy2, a1, o, rho, context)
-    @unpack partitions = context.game
-
-    target_belief = get_target_belief(partition, belief, policy1, policy2, a1, o, context)
-    target_partition = partitions[partition.partition_transitions[(a1, o)]]
-
-    return (ao_pair_probability(partition, belief, policy1, policy2, a1, o, context)
-           * excess(target_partition, target_belief, rho, context))
+    return max_weighted_excess_gap, (a1, o)
 end
 
 function get_target_belief(partition, belief, policy1, policy2, a1, o, context)

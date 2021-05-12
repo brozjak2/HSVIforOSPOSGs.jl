@@ -44,14 +44,7 @@ function presolve_UB(context)
             delta = max(delta, abs(prev_value - presolve_UB_value[s]))
         end
     end
-    if delta <= presolve_min_delta
-        @debug @sprintf(
-            "presolve_UB reached desired precision %s in %7.3fs",
-            presolve_min_delta, time() - clock_start
-        )
-    else
-        @debug @sprintf("presolve_UB reached time limit %7.3fs", presolve_time_limit)
-    end
+    presolve_time = time() - clock_start
 
     for partition in partitions
         for s in partition.states
@@ -68,7 +61,7 @@ function presolve_UB(context)
         initial_nn_train(context)
     end
 
-    log_presolveUB(context)
+    log_presolveUB(context, delta, presolve_time)
 end
 
 function presolve_UB_utility(context, presolve_UB_value, s, a1, a2)
@@ -137,14 +130,7 @@ function presolve_LB(context)
             partition.gamma[1] = new_alpha
         end
     end
-    if delta <= presolve_min_delta
-        @debug @sprintf(
-            "presolve_LB reached desired precision %s in %7.3fs",
-            presolve_min_delta, time() - clock_start
-        )
-    else
-        @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)
-    end
+    presolve_time = time() - clock_start
 
-    log_presolveLB(context)
+    log_presolveLB(context, delta, presolve_time)
 end

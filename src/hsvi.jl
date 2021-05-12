@@ -10,14 +10,15 @@
         qre_lambda::Float64 = 100.0,
         qre_epsilon::Float64 = 1e-2,
         qre_iter_limit::Int64 = 100,
-        nn_target_loss::Float64 = 1e-4,
+        nn_target_loss::Float64 = 1e-6,
         nn_batch_size::Int64 = 64,
         nn_learning_rate::Float64 = 1e-2,
         nn_neurons::String = "32-16-8",
         ub_prunning_epsilon::Float64 = 1e-2,
         time_limit::Float64 = 3600.0,
         output_dir::String = "",
-        seed::Int64 = 42
+        seed::Int64 = 42,
+        logger::Union{Nothing,AbstractLogger} = nothing
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -49,6 +50,7 @@ aiming for precision `epsilon`.
     - time_limit: time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
     - output_dir: directory to which results are written; if empty no results are written
     - seed: seed for the random number generator
+    - logger: logger to which output debugging logs; default logger if nothing
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -61,14 +63,15 @@ function hsvi(
     qre_lambda::Float64 = 100.0,
     qre_epsilon::Float64 = 1e-2,
     qre_iter_limit::Int64 = 100,
-    nn_target_loss::Float64 = 1e-4,
+    nn_target_loss::Float64 = 1e-6,
     nn_batch_size::Int64 = 64,
     nn_learning_rate::Float64 = 1e-2,
     nn_neurons::String = "32-16-8",
     ub_prunning_epsilon::Float64 = 1e-2,
     time_limit::Float64 = 3600.0,
     output_dir::String = "",
-    seed::Int64 = 42
+    seed::Int64 = 42,
+    logger::Union{Nothing,AbstractLogger} = nothing
 )
     Random.seed!(seed)
 
@@ -79,7 +82,7 @@ function hsvi(
         ub_prunning_epsilon
     )
     game = load(args)
-    context = Context(args, game, time_limit)
+    context = Context(args, game, time_limit, logger)
 
     presolve_UB(context)
 
@@ -93,7 +96,7 @@ function hsvi(
 end
 
 function solve(context, time_limit)
-    @unpack args, game, exploration_depths, clock_start = context
+    @unpack args, game, clock_start = context
     @unpack epsilon = args
     @unpack init_partition, init_belief = game
 

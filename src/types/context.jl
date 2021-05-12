@@ -5,10 +5,11 @@ mutable struct Context
     exploration_depths::Vector{Int64}
     time_limit::Float64
     clock_start::Float64
+    logger::AbstractLogger
 end
 
-function Context(args, game, time_limit)
-    context = Context(args, game, 0, [], time_limit, time())
+function Context(args, game, time_limit, logger)
+    context = Context(args, game, 0, [], time_limit, time(), isnothing(logger) ? global_logger() : logger)
 
     check_neigh_param_d(context)
 
@@ -19,6 +20,8 @@ function Context(args, game, time_limit)
     if args.stage_game_method != :lp && args.stage_game_method != :qre
         throw(InvalidArgumentValue("stage_game_method", args.stage_game_method))
     end
+
+    log_initial(context)
 
     return context
 end

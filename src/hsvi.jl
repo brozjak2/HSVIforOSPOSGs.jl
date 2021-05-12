@@ -100,11 +100,17 @@ function solve(context, time_limit)
     @unpack epsilon = args
     @unpack init_partition, init_belief = game
 
+    push!(context.gaps, width(context))
+    push!(context.timestamps, time() - context.clock_start)
+
     while excess(context, init_partition, init_belief, epsilon) > 0
         log_progress(context)
 
         explore(context, init_partition, init_belief, epsilon, 0)
         context.exploration_count += 1
+
+        push!(context.gaps, width(context))
+        push!(context.timestamps, time() - context.clock_start)
 
         log_depth(context)
 

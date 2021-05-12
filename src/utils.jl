@@ -1,3 +1,5 @@
+isapprox_max_norm(a, b; atol) = isapprox(a, b; atol=atol, norm=vec -> norm(vec, Inf))
+
 function check_neigh_param_d(context)
     @unpack args, game = context
     @unpack epsilon, neigh_param_d = args

@@ -118,8 +118,6 @@ function solve(context, time_limit)
 end
 
 function explore(context, partition, belief, rho, depth)
-    @unpack game, args = context
-
     _, LB_follower_policy, alpha = compute_LB(context, partition, belief)
     UB_leader_policy, _ , y = compute_UB(context, partition, belief)
 

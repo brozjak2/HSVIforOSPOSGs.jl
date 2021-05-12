@@ -46,7 +46,7 @@ function prune_and_retrain(context, partition, belief, y)
     delete_inds = []
 
     for (i, (beliefp, yp)) in enumerate(partition.upsilon)
-        if isapprox(belief, beliefp; atol=context.args.ub_prunning_epsilon)
+        if isapprox_max_norm(belief, beliefp; atol=context.args.ub_prunning_epsilon)
             shares_neighborhood = true
 
             if y < yp

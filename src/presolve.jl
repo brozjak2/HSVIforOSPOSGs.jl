@@ -21,9 +21,8 @@ function presolve_UB(context)
 
             prev_value = presolve_UB_value[s]
 
-            state_value_model = Model(() -> GLPK.Optimizer(want_infeasibility_certificates = false))
-            JuMP.set_optimizer_attribute(state_value_model, "tm_lim", 60 * 1_000)
-            JuMP.set_optimizer_attribute(state_value_model, "msg_lev", GLPK.GLP_MSG_OFF)
+            state_value_model = Model(CPLEX.Optimizer)
+            set_silent(state_value_model)
 
             @variable(state_value_model, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0)
             @variable(state_value_model, presolve_value)

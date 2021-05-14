@@ -5,20 +5,18 @@
         stage_game_method::Symbol = :lp,
         normalize_rewards::Bool = true,
         neigh_param_d::Float64 = 1e-6,
-        presolve_min_delta::Float64 = 1e-3,
+        presolve_min_delta::Float64 = 1e-4,
         presolve_time_limit::Float64 = 300.0,
         qre_lambda::Float64 = 100.0,
         qre_epsilon::Float64 = 1e-2,
         qre_iter_limit::Int64 = 100,
-        nn_target_loss::Float64 = 1e-6,
-        nn_batch_size::Int64 = 64,
+        nn_target_loss::Float64 = 1e-4,
+        nn_batch_size::Int64 = 128,
         nn_learning_rate::Float64 = 1e-2,
-        nn_neurons::String = "32-16-8",
+        nn_neurons::String = "32-16",
         ub_prunning_epsilon::Float64 = 1e-2,
         time_limit::Float64 = 3600.0,
-        output_dir::String = "",
-        seed::Int64 = 42,
-        logger::Union{Nothing,AbstractLogger} = nothing
+        seed::Int64 = 42
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -48,9 +46,7 @@ aiming for precision `epsilon`.
     - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning in UB update
     - time_limit: time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
-    - output_dir: directory to which results are written; if empty no results are written
     - seed: seed for the random number generator
-    - logger: logger to which output debugging logs; default logger if nothing
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -58,20 +54,18 @@ function hsvi(
     stage_game_method::Symbol = :lp,
     normalize_rewards::Bool = true,
     neigh_param_d::Float64 = 1e-6,
-    presolve_min_delta::Float64 = 1e-3,
+    presolve_min_delta::Float64 = 1e-4,
     presolve_time_limit::Float64 = 300.0,
     qre_lambda::Float64 = 100.0,
     qre_epsilon::Float64 = 1e-2,
     qre_iter_limit::Int64 = 100,
-    nn_target_loss::Float64 = 1e-6,
-    nn_batch_size::Int64 = 64,
+    nn_target_loss::Float64 = 1e-4,
+    nn_batch_size::Int64 = 128,
     nn_learning_rate::Float64 = 1e-2,
-    nn_neurons::String = "32-16-8",
+    nn_neurons::String = "32-16",
     ub_prunning_epsilon::Float64 = 1e-2,
     time_limit::Float64 = 3600.0,
-    output_dir::String = "",
-    seed::Int64 = 42,
-    logger::Union{Nothing,AbstractLogger} = nothing
+    seed::Int64 = 42
 )
     Random.seed!(seed)
 
@@ -82,15 +76,13 @@ function hsvi(
         ub_prunning_epsilon
     )
     game = load(args)
-    context = Context(args, game, time_limit, logger)
+    context = Context(args, game, time_limit)
 
     presolve_UB(context)
 
     presolve_LB(context)
 
     solve(context, time_limit)
-
-    log_results(context, output_dir)
 
     return context
 end
@@ -100,22 +92,20 @@ function solve(context, time_limit)
     @unpack epsilon = args
     @unpack init_partition, init_belief = game
 
-    push!(context.gaps, width(context))
-    push!(context.timestamps, time() - context.clock_start)
+    save_exploration_data(context)
+    log_progress(context)
 
     while excess(context, init_partition, init_belief, epsilon) > 0
-        log_progress(context)
-
         explore(context, init_partition, init_belief, epsilon, 0)
-        context.exploration_count += 1
 
-        push!(context.gaps, width(context))
-        push!(context.timestamps, time() - context.clock_start)
+        context.exploration_count += 1
+        save_exploration_data(context)
 
         log_depth(context)
+        log_progress(context)
 
         if time() - clock_start >= time_limit
-            @warn "reached 1h time limit and did not converge, killed"
+            @warn "reached time limit of $(Int(time_limit))s and did not converge, killed"
             break
         end
     end

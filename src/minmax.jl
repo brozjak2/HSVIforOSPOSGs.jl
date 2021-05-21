@@ -51,8 +51,6 @@ function compute_UB_dual(context, partition, belief)
     UB_dual = Model(CPLEX.Optimizer)
     set_silent(UB_dual)
 
-
-
     @variable(UB_dual, gamevalue)
     @variable(UB_dual, 1.0 >= policy2[s=partition.states, a2=states[s].follower_actions] >= 0.0) # 28f
     @variable(UB_dual, belieftransform[a1=partition.leader_actions, o=partition.observations[a1], spi=1:length(partitions[partition.partition_transitions[(a1, o)]].states)])

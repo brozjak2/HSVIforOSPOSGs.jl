@@ -22,6 +22,7 @@ function compute_qre(context, partition, belief, value_func)
         policy1_old = copy(policy1)
         policy2_old = copy(policy2)
 
+        # u(a_1, policy2)
         a1_values = zeros(leader_action_count)
         for a1 in partition.leader_actions
             a1i = partition.leader_action_index_table[a1]
@@ -63,6 +64,7 @@ function compute_qre(context, partition, belief, value_func)
             end
         end
 
+        # u(a_2, policy1 | s)
         a2_values = [zeros(length(states[s].follower_actions)) for s in partition.states]
         for s in partition.states
             state = states[s]

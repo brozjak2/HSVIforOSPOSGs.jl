@@ -8,7 +8,7 @@ function check_neigh_param_d(context)
     upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
     if !(0 <= neigh_param_d <= upper_limit)
         @warn @sprintf(
-            "neighborhood parameter = %.5f is outside bounds (%.5f, %.5f)",
+            "neighborhood parameter = %.4e is outside bounds (%d, %.4e)",
             neigh_param_d, 0, upper_limit
         )
     end

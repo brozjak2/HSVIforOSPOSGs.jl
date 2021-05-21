@@ -26,17 +26,19 @@ aiming for precision `epsilon`.
     - game_file_path: path to the file with game definition
     - epsilon: desired precision with which the algorithm tries to solve the value of the game
     - ub_value_method: implemetation for computing the value of the UB; either `:nn` for the
-        approximative method using Neural networks or `:lp` for the exact method using Linear Programming
+        approximative method using neural networks or `:lp` for the exact convex hull computed
+        using linear programs
     - stage_game_method: implemetation for computing the value of stage game; either `:qre` for the
-        approximative iterative method of Quantal response equilibrium or `:lp` for the exact
-        method using Linear programming for min-max/max-min optimization
+        approximative iterative method of quantal response equilibrium or `:lp` for the exact
+        method using minimax and maximin linear programs
     - normalize_rewards: normalize rewards (utilities) so that the minimal and maximal
-        rewards are equal to 0 and 1 respectively
+        rewards are equal to 0 and 1, respectively
     - neigh_param_d: parameter that guarantees Lipschitz continuity and convergence of the algorithm
     - presolve_min_delta: when changes to the bounds during the presolve stage of the algorithm
         are smaller than this value the presolve is terminated
     - presolve_time_limit: time limit for the presolve stage of the algorithm in seconds
-    - qre_lambda: constant of the QRE algorithm which affects the convergence
+    - qre_lambda: parameter of the logit equilibrium algorithm which affects the returned
+        equilibrium and strategies
     - qre_epsilon: when policies of both players do not change between consecutive iterations of
         QRE by value larger than this, the QRE algorithm terminates
     - qre_iter_limit: iteration limit for the QRE algorithm solving stage game
@@ -45,7 +47,8 @@ aiming for precision `epsilon`.
     - nn_learning_rate: learning rate for ADAM optimizer used in UB NNs
     - nn_neurons: number of neurons in individual hidden layers of UB NNs separated by dash
     - ub_prunning_epsilon: neighborhood of this size is searched when prunning in UB update
-    - time_limit: time limit of the whole algorithm, after which it is killed, in seconds; set to Inf to turn off
+    - time_limit: time limit of the whole algorithm, after which it is killed, in seconds;
+        set to Inf to turn off
     - seed: seed for the random number generator
 """
 function hsvi(

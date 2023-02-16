@@ -8,3 +8,4 @@ Manifest.toml
 
 /.vscode/
 /.envrc
+/scripts/dev.jl

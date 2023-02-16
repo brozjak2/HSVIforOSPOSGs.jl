@@ -6,6 +6,9 @@ Manifest.toml
 
 /docs/build/
 
+/games/
+/outputs/
+
 /.vscode/
 /.envrc
 /scripts/dev.jl

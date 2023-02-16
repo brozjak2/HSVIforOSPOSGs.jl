@@ -26,7 +26,7 @@ function UB_value_lp(context, partition, belief)
     upsilon_size = length(partition.upsilon)
     state_count = length(partition.states)
 
-    UB_value_model = Model(CPLEX.Optimizer)
+    UB_value_model = Model(GLPK.Optimizer)
     set_silent(UB_value_model)
 
     @variable(UB_value_model, lambda[i=1:upsilon_size] >= 0.0) # 33f

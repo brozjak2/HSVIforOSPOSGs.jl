@@ -2,7 +2,7 @@ function compute_LB_primal(context, partition, belief)
     @unpack game = context
     @unpack discount_factor, states, partitions = game
 
-    LB_primal = Model(CPLEX.Optimizer)
+    LB_primal = Model(GLPK.Optimizer)
     set_silent(LB_primal)
 
     @variable(LB_primal, 1.0 >= policy1[a1=partition.leader_actions] >= 0.0) # 27f
@@ -48,7 +48,7 @@ function compute_UB_dual(context, partition, belief)
     @unpack game = context
     @unpack discount_factor, states, partitions = game
 
-    UB_dual = Model(CPLEX.Optimizer)
+    UB_dual = Model(GLPK.Optimizer)
     set_silent(UB_dual)
 
     @variable(UB_dual, gamevalue)

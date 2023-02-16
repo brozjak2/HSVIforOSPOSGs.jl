@@ -1,8 +1,8 @@
 module HSVIforOSPOSGs
 
-using CPLEX
 using Distributions
 using Flux
+using GLPK
 using JuMP
 using LinearAlgebra
 using Logging

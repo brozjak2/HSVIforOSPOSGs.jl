@@ -1,2 +1,4 @@
 [deps]
 HSVIforOSPOSGs = "28136be4-687d-4786-8c85-223b052e0651"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"

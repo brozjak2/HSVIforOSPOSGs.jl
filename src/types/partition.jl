@@ -1,5 +1,5 @@
 """
-Partition
+    Partition
 
 Type for a partition of one-sided partially observable stochastic game.
 """

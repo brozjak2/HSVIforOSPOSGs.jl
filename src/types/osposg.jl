@@ -166,7 +166,7 @@ end
 """
     write(path::AbstractString, osposg::OSPOSG)
 
-Writes game in the `.osposg` format to `path`.
+Writes game `osposg` in the `.osposg` format to `path`.
 """
 function write(path::AbstractString, osposg::OSPOSG)
     open(path, "w") do file

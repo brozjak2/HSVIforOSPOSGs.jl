@@ -9,9 +9,9 @@ OSPOSGs can be seen as a generalization of [Partially observable Markov decision
 
 ## Game format
 
-The games must be fed into the algorithm in compatible format, which is specified in `games/game_format.txt`.
+The games must be fed into the algorithm in compatible format, which is specified in [`games/game_format.txt`](games/game_format.txt).
 
-Couple of [pursuit-evasion](https://en.wikipedia.org/wiki/Pursuit%E2%80%93evasion) games in this format are available in `games/pursuit-evasion` directory.
+Couple of [pursuit-evasion](https://en.wikipedia.org/wiki/Pursuit%E2%80%93evasion) games in this format are available in [`games/pursuit-evasion`](games/pursuit-evasion) directory.
 
 ## How to run
 
@@ -28,7 +28,7 @@ hsvi = HSVI()
 solve(osposg, hsvi, 1.0, 300.0)
 ```
 
-Additional examples on how to configure and run the algorithm are provided in the `scripts` directory.
+Additional examples on how to configure and run the algorithm are provided in the [`scripts`](scripts) directory.
 
 ## LP Solvers
 
@@ -44,7 +44,7 @@ using CPLEX
 HSVI(optimizer_factory=() -> CPLEX.Optimizer())
 ```
 
-Fully working minimal example on how to do this can be seen in `scripts/gurobi_example.jl`.
+Fully working minimal example on how to do this can be seen in [`scripts/gurobi_example.jl`](scripts/gurobi_example.jl).
 
 ## Logging level
 

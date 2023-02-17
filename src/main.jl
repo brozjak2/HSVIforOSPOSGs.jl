@@ -107,7 +107,7 @@ function check_neighborhood(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64)
     if !(0.0 <= hsvi.neighborhood <= upper_limit)
         @warn @sprintf(
             "neighborhood parameter = %.4e is outside bounds (%.4e, %.4e)",
-            neighborhood, 0.0, upper_limit
+            hsvi.neighborhood, 0.0, upper_limit
         )
     end
 end

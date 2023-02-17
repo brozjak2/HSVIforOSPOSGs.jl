@@ -1,6 +1,6 @@
 function presolve_UB(context)
     @unpack args, game = context
-    @unpack presolve_min_delta, presolve_time_limit, ub_value_method = args
+    @unpack presolve_min_delta, presolve_time_limit = args
     @unpack partitions, states = game
 
     clock_start = time()
@@ -55,10 +55,6 @@ function presolve_UB(context)
 
             push!(partition.upsilon, (belief, presolve_UB_value[s]))
         end
-    end
-
-    if ub_value_method == :nn
-        initial_nn_train(context)
     end
 
     log_presolveUB(context, delta, presolve_time)

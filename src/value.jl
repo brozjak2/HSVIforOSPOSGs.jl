@@ -1,26 +1,8 @@
 LB_value(context) = LB_value(context, context.game.init_partition, context.game.init_belief)
-
-function LB_value(context, partition, belief)
-    return maximum(dot(alpha, belief) for alpha in partition.gamma)
-end
+LB_value(context, partition, belief) = maximum(dot(alpha, belief) for alpha in partition.gamma)
 
 UB_value(context) = UB_value(context, context.game.init_partition, context.game.init_belief)
-
 function UB_value(context, partition, belief)
-    @unpack ub_value_method = context.args
-
-    if ub_value_method == :lp
-        return UB_value_lp(context, partition, belief)
-    elseif ub_value_method == :nn
-        return UB_value_nn(context, partition, belief)
-    end
-end
-
-function UB_value_nn(context, partition, belief)
-    return partition.nn(belief)[1]
-end
-
-function UB_value_lp(context, partition, belief)
     @unpack lipschitz_delta = context.game
 
     upsilon_size = length(partition.upsilon)

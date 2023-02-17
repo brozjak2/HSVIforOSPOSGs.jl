@@ -78,12 +78,3 @@ function log_depth(context)
     @info "\texploration_depth = $(context.exploration_depths[end])"
     flush_logs()
 end
-
-function log_initial_nn_train(context, partition)
-    @debug @sprintf(
-        "%7.3fs\tpartition %i NN trained",
-        time() - context.clock_start,
-        partition.index
-    )
-    flush_logs()
-end

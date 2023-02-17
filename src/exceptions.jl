@@ -4,7 +4,7 @@ struct InvalidArgumentValue{T} <: Exception
     value::T
 end
 
-function Base.showerror(io::IO, e::MultiPartitionTransitionException)
+function Base.showerror(io::IO, ::MultiPartitionTransitionException)
     print(io, "Multi-partition transition encountered in game definition")
 end
 

@@ -1,7 +1,6 @@
 module HSVIforOSPOSGs
 
 using Distributions
-using Flux
 using GLPK
 using JuMP
 using LinearAlgebra
@@ -18,9 +17,7 @@ include("hsvi.jl")
 include("load.jl")
 include("logging.jl")
 include("minmax.jl")
-include("nn.jl")
 include("presolve.jl")
-include("qre.jl")
 include("utils.jl")
 include("value.jl")
 

@@ -20,14 +20,6 @@ function Context(args, game, time_limit)
 
     check_neigh_param_d(context)
 
-    if args.ub_value_method != :lp && args.ub_value_method != :nn
-        throw(InvalidArgumentValue("ub_value_method", args.ub_value_method))
-    end
-
-    if args.stage_game_method != :lp && args.stage_game_method != :qre
-        throw(InvalidArgumentValue("stage_game_method", args.stage_game_method))
-    end
-
     log_initial(context)
 
     return context

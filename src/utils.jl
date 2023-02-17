@@ -22,22 +22,6 @@ function dictarray_push_or_init!(dictarray::Dict{K,Array{V,N}}, key::K, value::V
     end
 end
 
-function compute_LB(context, partition, belief)
-    if context.args.stage_game_method == :lp
-        return compute_LB_primal(context, partition, belief)
-    elseif context.args.stage_game_method == :qre
-        return compute_LB_qre(context, partition, belief)
-    end
-end
-
-function compute_UB(context, partition, belief)
-    if context.args.stage_game_method == :lp
-        return compute_UB_dual(context, partition, belief)
-    elseif context.args.stage_game_method == :qre
-        return compute_UB_qre(context, partition, belief)
-    end
-end
-
 function save_exploration_data(context)
     @unpack game, clock_start = context
 

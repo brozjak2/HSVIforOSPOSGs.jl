@@ -1,3 +1,5 @@
+#!/usr/bin/env julia
+
 using HSVIforOSPOSGs
 using Logging
 using CPLEX

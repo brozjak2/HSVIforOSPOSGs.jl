@@ -1,3 +1,5 @@
+#!/usr/bin/env julia
+
 using HSVIforOSPOSGs
 
 osposg = OSPOSG("games/pursuit-evasion/peg03.osposg") # Load game

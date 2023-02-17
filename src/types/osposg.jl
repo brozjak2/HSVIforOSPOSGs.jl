@@ -66,9 +66,9 @@ Returns the Lipschitz delta of the game.
 lipschitz_delta(osposg::OSPOSG) = (UB_max(osposg) - LB_min(osposg)) / 2.0
 
 """
-    OSPOSG{Float64}(path::AbstractString)
+    OSPOSG(path::AbstractString)
 
-Construct `OSPOSG` with given `Float64` real type from `.osposg` file at `path`.
+Construct `OSPOSG` from `.osposg` file at `path`.
 """
 function OSPOSG(path::AbstractString)
     return open(path, "r") do file

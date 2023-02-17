@@ -1,0 +1,90 @@
+The file consists of the following sections:
+  1. Description of the game (number of states etc.)
+  2. Description of the game states
+  3. Names of actions of Player 1
+  4. Names of actions of Player 2
+  5. Names of observations
+  6. Enumeration of actions playable by Player 2 in each of the states
+  7. Enumeration of actions playable by Player 1 in each of the partition
+  8. Enumeration of game transitions ( Pr[o,s' | s,a,a'] )
+  9. Enumeration of rewards
+ 10. Initial belief
+
+1. Description of the game
+==========================
+The first line of the file contains 8 numbers (in this order separated by
+white-space) as follows:
+  a) Number of states (|S|)
+  b) Number of "partitions". P1 (with imperfect information) always knows
+     the partition he is currently in. Partitions typically correspond to
+     the perfectly observable components of the state description (e.g.,
+     the location of P1).
+  c) Number of P1 actions (|A_1|)
+  d) Number of P2 actions (|A_2|)
+  e) Number of observations (|O|)
+  f) Number of transitions (i.e., lines in the section 7 of the file)
+  g) Number of rewards (i.e., lines in the section 8 of the file)
+  h) Discount factor (floating-point number)
+
+2. Description of the game states
+=================================
+This section contains |S| lines containing a string and an integer sepa-
+rated by a white space. The string is the name of the i-th state (just
+for convenience) and the integer denotes the partition the state belongs
+to (numbered from zero).
+  [state name] [partition ID]
+
+3. Names of actions of Player 1
+===============================
+This section contains |A_1| strings on separate lines. (The names of the
+actions are just for the purpose of convenience.)
+
+4. Names of actions of Player 2
+===============================
+Similar to section 2, except for describing actions of Player 2.
+
+5. Names of observations
+========================
+Similar to sections 2 and 3. Each line represents the name of one obser-
+vation in the game.
+
+6. Enumeration of actions playable by Player 2
+==============================================
+The solver assumes that there may be different set of actions that can be
+played in different states. This section contains |S| lines and i-th line
+enumerates actions that can be played by Player 2 in i-th state. The list
+of actions is a white-space separated integers [0, |A_2|-1].
+
+7. Enumeration of actions playable by Player 1
+==============================================
+Also Player 1 can play different actions in different partitions. Every
+line in this section (they must match the number of partitions) denotes
+the set of actions that can be played by Player 1 in the given partition
+(a list of [0, |A_1|-1] partitions.
+
+8. Enumeration of game transitions
+==================================
+Each line in this section describes one non-zero entry of the transition
+function. The format of each line is as follows:
+  [s] [a] [a'] [o] [s'] [prob]
+which describes that the probability to transition from [s] to [s'] and
+generating observation [o] when actions [a] (of P1) and [a'] has been
+played is [prob]. [s], [a], [a'], [o] and [s'] are zero-based indices of
+states, actions and observations.
+
+9. Enumeration of rewards
+=========================
+Each line in this section describes one non-zero entry of the reward fun-
+ction R. The format is as follows:
+  [s] [a] [a'] [reward]
+which means that the reward of Player 1 when taking actions [a] (of P1)
+and [a'] in the state [s] is [reward]. [s], [a] and [a'] are zero-based
+indices of states and actions. [reward] can be floating-point.
+
+10. Initial belief
+==================
+The initial belief is described by a single line containing white-space
+separated numbers. The first number identifies the initial partition of
+the game (Player 1 knows the partition). The remaining K numbers (where
+K is the number of states in the initial partition) denote the probabi-
+lity that the game starts in the given state of the partition.

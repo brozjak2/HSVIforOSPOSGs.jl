@@ -1,10 +1,22 @@
-mutable struct State
-    index::Int64
-    partition::Int64
-    belief_index::Int64
-    follower_actions::Vector{Int64}
-    follower_action_index_table::Dict{Int64,Int64}
-    name::String
+"""
+    State
+
+Type for a state of one-sided partially observable stochastic game.
+"""
+struct State
+    index::Int
+    partition::Int
+    belief_index::Int
+    player2_actions::Vector{Int}
+    policy_index::Dict{Int,Int}
+
+    State(index::Int, partition::Int, belief_index::Int) = new(
+        index,
+        partition,
+        belief_index,
+        Int[],
+        Dict{Int,Int}()
+    )
 end
 
 function Base.show(io::IO, state::State)

@@ -1,33 +1,33 @@
-mutable struct Partition
-    index::Int64
-    states::Vector{Int64}
-    leader_actions::Vector{Int64}
-    leader_action_index_table::Dict{Int64,Int64}
+"""
+Partition
 
-    observations::Dict{Int64,Vector{Int64}}
-    rewards::Dict{Tuple{Int64,Int64,Int64},Float64}
+Type for a partition of one-sided partially observable stochastic game.
+"""
+struct Partition
+    index::Int
+    states::Vector{Int}
+    player1_actions::Vector{Int}
+    policy_index::Dict{Int,Int}
+
+    target::Dict{Tuple{Int,Int},Int}
+    observations::Dict{Int,Vector{Int}}
+    transitions::Dict{Tuple{Int,Int,Int},Vector{Tuple{Int,Int,Float64}}}
+    a1o_transitions::Dict{Tuple{Int,Int},Vector{Tuple{Int,Int,Int,Float64}}}
 
     gamma::Vector{Vector{Float64}}
     upsilon::Vector{Tuple{Vector{Float64},Float64}}
 
-    transitions::Dict{Tuple{Int64,Int64,Int64},Vector{Transition}}
-    ao_pair_transitions::Dict{Tuple{Int64,Int64},Vector{Transition}}
-    partition_transitions::Dict{Tuple{Int64,Int64},Int64}
-end
-
-function Partition(index, states, leader_actions, leader_action_index_table)
-    return Partition(
+    Partition(index::Int) = new(
         index,
-        states,
-        leader_actions,
-        leader_action_index_table,
-        Dict{Int64,Vector{Int64}}([]),
-        Dict{Tuple{Int64,Int64,Int64},Float64}([]),
-        Vector{Vector{Float64}}(undef, 0),
-        Vector{Tuple{Vector{Float64},Float64}}(undef, 0),
-        Dict{Tuple{Int64,Int64,Int64},Vector{Transition}}([]),
-        Dict{Tuple{Int64,Int64},Vector{Transition}}([]),
-        Dict{Tuple{Int64,Int64},Int64}([])
+        Int[],
+        Int[],
+        Dict{Int,Int}(),
+        Dict{Tuple{Int,Int},Int}(),
+        Dict{Int,Vector{Int}}(),
+        Dict{Tuple{Int,Int,Int},Vector{Tuple{Int,Int,Float64}}}(),
+        Dict{Tuple{Int,Int},Vector{Tuple{Int,Int,Int,Float64}}}(),
+        Vector{Float64}[],
+        Tuple{Vector{Float64},Float64}[]
     )
 end
 

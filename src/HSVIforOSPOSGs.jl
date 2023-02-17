@@ -1,23 +1,26 @@
 module HSVIforOSPOSGs
 
-using Distributions
+# using Distributions
 using GLPK
 using JuMP
-using LinearAlgebra
-using Logging
 using Parameters
+
+using LinearAlgebra: dot
+using Logging
 using Printf
 
-export hsvi
+export OSPOSG, HSVI, solve
 
-include("types.jl")
-include("exceptions.jl")
-include("hsvi.jl")
-include("load.jl")
+include("types/exceptions.jl")
+include("types/state.jl")
+include("types/partition.jl")
+include("types/osposg.jl")
+include("types/hsvi.jl")
+include("types/recorder.jl")
 include("logging.jl")
-include("minmax.jl")
-include("presolve.jl")
-include("utils.jl")
 include("value.jl")
+include("presolve.jl")
+include("minmax.jl")
+include("main.jl")
 
 end

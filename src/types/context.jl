@@ -18,7 +18,7 @@ end
 function Context(args, game, time_limit)
     context = Context(args, game, 0, [], [], [], [], [], [], [], time_limit, time())
 
-    check_neigh_param_d(context)
+    check_neighborhood(context)
 
     log_initial(context)
 

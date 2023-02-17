@@ -1,15 +1,15 @@
 isapprox_max_norm(a, b; atol) = isapprox(a, b; atol=atol, norm=vec -> norm(vec, Inf))
 
-function check_neigh_param_d(context)
+function check_neighborhood(context)
     @unpack args, game = context
-    @unpack epsilon, neigh_param_d = args
+    @unpack epsilon, neighborhood = args
     @unpack discount_factor, lipschitz_delta = game
 
     upper_limit = (1 - discount_factor) * epsilon / (2 * lipschitz_delta)
-    if !(0 <= neigh_param_d <= upper_limit)
+    if !(0 <= neighborhood <= upper_limit)
         @warn @sprintf(
             "neighborhood parameter = %.4e is outside bounds (%d, %.4e)",
-            neigh_param_d, 0, upper_limit
+            neighborhood, 0, upper_limit
         )
     end
 end

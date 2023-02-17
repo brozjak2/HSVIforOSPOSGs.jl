@@ -1,6 +1,6 @@
 function presolve_UB(context)
     @unpack args, game = context
-    @unpack presolve_min_delta, presolve_time_limit = args
+    @unpack presolve_epsilon, presolve_time_limit = args
     @unpack partitions, states = game
 
     clock_start = time()
@@ -12,7 +12,7 @@ function presolve_UB(context)
     end
 
     delta = Inf
-    while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
+    while time() - clock_start < presolve_time_limit && delta > presolve_epsilon
         delta = 0.0
 
         for state in states
@@ -72,7 +72,7 @@ end
 
 function presolve_LB(context)
     @unpack args, game = context
-    @unpack presolve_min_delta, presolve_time_limit = args
+    @unpack presolve_epsilon, presolve_time_limit = args
     @unpack partitions, states, discount_factor = game
 
     clock_start = time()
@@ -90,7 +90,7 @@ function presolve_LB(context)
     end
 
     delta = Inf
-    while time() - clock_start < presolve_time_limit && delta > presolve_min_delta
+    while time() - clock_start < presolve_time_limit && delta > presolve_epsilon
         delta = 0.0
 
         for partition in partitions

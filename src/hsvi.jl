@@ -1,10 +1,10 @@
 """
     function hsvi(
         game_file_path::String, epsilon::Float64;
-        neigh_param_d::Float64 = 1e-6,
-        presolve_min_delta::Float64 = 1e-4,
+        neighborhood::Float64 = 1e-6,
+        presolve_epsilon::Float64 = 1e-4,
         presolve_time_limit::Float64 = 300.0,
-        time_limit::Float64 = 3600.0,
+        time_limit::Float64 = 3600.0
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -13,8 +13,8 @@ aiming for precision `epsilon`.
 # Parameters
     - game_file_path: path to the file with game definition
     - epsilon: desired precision with which the algorithm tries to solve the value of the game
-    - neigh_param_d: parameter that guarantees Lipschitz continuity and convergence of the algorithm
-    - presolve_min_delta: when changes to the bounds during the presolve stage of the algorithm
+    - neighborhood: parameter that guarantees Lipschitz continuity and convergence of the algorithm
+    - presolve_epsilon: when changes to the bounds during the presolve stage of the algorithm
         are smaller than this value the presolve is terminated
     - presolve_time_limit: time limit for the presolve stage of the algorithm in seconds
     - time_limit: time limit of the whole algorithm, after which it is killed, in seconds;
@@ -22,13 +22,13 @@ aiming for precision `epsilon`.
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
-    neigh_param_d::Float64 = 1e-6,
-    presolve_min_delta::Float64 = 1e-4,
+    neighborhood::Float64 = 1e-6,
+    presolve_epsilon::Float64 = 1e-4,
     presolve_time_limit::Float64 = 300.0,
-    time_limit::Float64 = 3600.0,
+    time_limit::Float64 = 3600.0
 )
     args = Args(
-        game_file_path, epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit
+        game_file_path, epsilon, neighborhood, presolve_epsilon, presolve_time_limit
     )
     game = load(args)
     context = Context(args, game, time_limit)
@@ -141,7 +141,7 @@ end
 function next_rho(context, rho)
     @unpack game, args = context
     @unpack lipschitz_delta, discount_factor = game
-    @unpack neigh_param_d = args
+    @unpack neighborhood = args
 
-    return (rho - 2 * lipschitz_delta * neigh_param_d) / discount_factor
+    return (rho - 2 * lipschitz_delta * neighborhood) / discount_factor
 end

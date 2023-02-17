@@ -7,12 +7,12 @@ function log_initial(context)
 end
 
 function log_presolveUB(context, delta, presolve_time)
-    @unpack presolve_min_delta, presolve_time_limit = context.args
+    @unpack presolve_epsilon, presolve_time_limit = context.args
 
-    if delta <= presolve_min_delta
+    if delta <= presolve_epsilon
         @debug @sprintf(
                 "presolve_LB reached desired precision %s in %7.3fs",
-                presolve_min_delta, presolve_time
+                presolve_epsilon, presolve_time
             )
     else
         @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)
@@ -27,12 +27,12 @@ function log_presolveUB(context, delta, presolve_time)
 end
 
 function log_presolveLB(context, delta, presolve_time)
-    @unpack presolve_min_delta, presolve_time_limit = context.args
+    @unpack presolve_epsilon, presolve_time_limit = context.args
 
-    if delta <= presolve_min_delta
+    if delta <= presolve_epsilon
         @debug @sprintf(
                 "presolve_LB reached desired precision %s in %7.3fs",
-                presolve_min_delta, presolve_time
+                presolve_epsilon, presolve_time
             )
     else
         @debug @sprintf("presolve_LB reached time limit %7.3fs", presolve_time_limit)

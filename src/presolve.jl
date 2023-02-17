@@ -49,6 +49,7 @@ function presolve_LB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
         end
     end
 
+    recorder.lb_presolve = LB_value(osposg, hsvi)
     log_presolveLB(osposg, hsvi, delta, time() - clock_start, recorder)
 end
 
@@ -102,6 +103,7 @@ function presolve_UB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
         end
     end
 
+    recorder.ub_presolve = UB_value(osposg, hsvi)
     log_presolveUB(osposg, hsvi, delta, time() - clock_start, recorder)
 end
 

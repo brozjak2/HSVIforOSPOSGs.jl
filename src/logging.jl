@@ -32,7 +32,7 @@ function log_presolveLB(osposg::OSPOSG, hsvi::HSVI, delta::Float64, presolve_tim
     @info @sprintf(
         "%7.2fs presolve_LB %+10.5f",
         time() - recorder.clock_start,
-        LB_value(osposg, hsvi)
+        recorder.lb_presolve
     )
 
     flush_logs()
@@ -54,7 +54,7 @@ function log_presolveUB(osposg::OSPOSG, hsvi::HSVI, delta::Float64, presolve_tim
     @info @sprintf(
         "%7.2fs presolve_UB %+10.5f",
         time() - recorder.clock_start,
-        UB_value(osposg, hsvi)
+        recorder.ub_presolve
     )
 
     flush_logs()

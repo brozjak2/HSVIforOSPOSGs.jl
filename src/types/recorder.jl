@@ -13,9 +13,12 @@ mutable struct Recorder
     upsilon_sizes::Vector{Int}
     exploration_depths::Vector{Int}
 
+    lb_presolve::Float64
+    ub_presolve::Float64
+
     clock_start::Float64
 
-    Recorder() = new(0, [], [], [], [], [], [], [], time())
+    Recorder() = new(0, [], [], [], [], [], [], [], -Inf, Inf, time())
 end
 
 function Base.show(io::IO, recorder::Recorder)

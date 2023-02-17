@@ -5,7 +5,6 @@
         presolve_min_delta::Float64 = 1e-4,
         presolve_time_limit::Float64 = 300.0,
         time_limit::Float64 = 3600.0,
-        seed::Int64 = 42
     )
 
 Run the HSVI for One-Sided POSGs algorithm on game loaded from `game_file_path`
@@ -20,7 +19,6 @@ aiming for precision `epsilon`.
     - presolve_time_limit: time limit for the presolve stage of the algorithm in seconds
     - time_limit: time limit of the whole algorithm, after which it is killed, in seconds;
         set to Inf to turn off
-    - seed: seed for the random number generator
 """
 function hsvi(
     game_file_path::String, epsilon::Float64;
@@ -28,10 +26,7 @@ function hsvi(
     presolve_min_delta::Float64 = 1e-4,
     presolve_time_limit::Float64 = 300.0,
     time_limit::Float64 = 3600.0,
-    seed::Int64 = 42
 )
-    Random.seed!(seed)
-
     args = Args(
         game_file_path, epsilon, neigh_param_d, presolve_min_delta, presolve_time_limit
     )

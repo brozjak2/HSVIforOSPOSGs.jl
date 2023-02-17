@@ -13,6 +13,8 @@ function solve(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64, time_limit::Float64
     presolve_LB(osposg, hsvi, recorder)
     presolve_UB(osposg, hsvi, recorder)
 
+    update_recorder(osposg, hsvi, recorder)
+    push!(recorder.exploration_depths, 0)
     log_start(osposg, hsvi, recorder)
 
     while excess(osposg, hsvi, osposg.partitions[osposg.initial_partition], osposg.initial_belief, epsilon) > 0.0

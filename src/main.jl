@@ -106,7 +106,7 @@ next_rho(osposg::OSPOSG, hsvi::HSVI, rho::Float64) =
 
 function check_neighborhood(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64)
     upper_limit = (1.0 - osposg.discount) * epsilon / (2.0 * lipschitz_delta(osposg))
-    if !(0.0 <= hsvi.neighborhood <= upper_limit)
+    if !(0.0 < hsvi.neighborhood < upper_limit)
         @warn @sprintf(
             "neighborhood parameter = %.4e is outside bounds (%.4e, %.4e)",
             hsvi.neighborhood, 0.0, upper_limit

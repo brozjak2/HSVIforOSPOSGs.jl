@@ -117,9 +117,9 @@ function log_progress(recorder::Recorder)
 end
 
 function log_end(recorder::Recorder, epsilon::Float64)
-    if recorder.exploration_count > 0
+    if recorder.exploration_count > 1
         @info @sprintf(
-            "%5s: %8.3fs %+10.5f %+10.5f %+10.5f",
+            "%5s: %7.2fs %+10.5f %+10.5f %+10.5f",
             recorder.gaps[end] <= epsilon ? "OK" : "FAIL",
             recorder.timestamps[end],
             recorder.lb_values[end],

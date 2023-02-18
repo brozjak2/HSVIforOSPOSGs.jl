@@ -13,7 +13,7 @@ The games must be fed into the algorithm in compatible format, which is specifie
 
 Couple of [pursuit-evasion](https://en.wikipedia.org/wiki/Pursuit%E2%80%93evasion) games in this format are available in [`games/pursuit-evasion`](games/pursuit-evasion) directory.
 
-## How to run
+## Getting started
 
 To run the algorithm, load a game, configure the algorithm and call `solve` on them with desired precision gap and time limit.
 The following example loads the smallest pursuit-evasion game, initializes the HSVI algorithm with default parameters and runs the algorithm until gap of 1.0 is achieved or for up to 5 minutes.

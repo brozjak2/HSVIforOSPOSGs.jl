@@ -39,7 +39,7 @@ time_limit = 60.0
         @test osposg.maximal_reward == 100.0
     end
 
-    @testset "load checks" begin
+    @testset "checks" begin
         @test_throws HSVIforOSPOSGs.MultiPartitionTransitionException OSPOSG("games/multi_partition_transition.osposg")
         @test_throws HSVIforOSPOSGs.IsNotDistributionException OSPOSG("games/is_not_distribution.osposg")
         @test_throws ArgumentError OSPOSG("games/discount.osposg")

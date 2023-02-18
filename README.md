@@ -25,8 +25,13 @@ using HSVIforOSPOSGs
 osposg = OSPOSG("games/pursuit-evasion/peg03.osposg")
 hsvi = HSVI()
 
-solve(osposg, hsvi, 1.0, 300.0)
+recorder = solve(osposg, hsvi, 1.0, 300.0)
 ```
+
+Note that the `recorder` contains records of the algorithm progress after each iteration and can be used for further examination or presentation of results.
+The following plot was created by [`scripts/plot_example.jl`](scripts/plot_example.jl) and shows the convergence of bounds on [`games/pursuit-evasion/peg04.osposg`](games/pursuit-evasion/peg04.osposg):
+
+![Converge plot](assets/convergence.png)
 
 Additional examples on how to configure and run the algorithm are provided in the [`scripts`](scripts) directory.
 

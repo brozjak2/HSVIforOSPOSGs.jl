@@ -17,3 +17,4 @@ OSPOSGs can be seen as a generalization of [Partially observable Markov decision
   - [Logging level](@ref)
   - [Examples](@ref)
 - [Game format](@ref)
+- [API Reference](@ref)

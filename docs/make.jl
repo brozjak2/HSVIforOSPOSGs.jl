@@ -16,7 +16,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Manual" => "manual.md",
-        "Game format" => "game_format.md"
+        "Game format" => "game_format.md",
+        "API Reference" => "api.md"
     ],
 )
 

@@ -8,7 +8,7 @@ using LinearAlgebra: dot, normalize
 using Logging
 using Printf
 
-export OSPOSG, HSVI, solve
+export OSPOSG, HSVI, solve, save
 
 include("types/exceptions.jl")
 include("types/state.jl")

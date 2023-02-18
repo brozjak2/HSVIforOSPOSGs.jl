@@ -39,8 +39,10 @@ function compute_LB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
         for (si, s) in enumerate(partition.states)
     ]
     policy2_conditional = map.(x -> isinf(x) | isnan(x) ? zero(x) : x, policy2_conditional)
+    policy2_conditional = [sum(state_policy) > 0.0 ? normalize(max.(state_policy, 0.0), 1) : state_policy for state_policy in policy2_conditional]
 
     policy1 = value.(model[:policy1]).data
+    policy1 = normalize(max.(policy1, 0.0), 1)
 
     return policy1, policy2_conditional, value.(model[:statevalue]).data
 end
@@ -70,7 +72,7 @@ function compute_UB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
 
     # 28d
     @constraint(model, con28d[a1=partition.player1_actions, o=partition.observations[a1], sp=osposg.partitions[partition.target[a1, o]].states],
-        belieftransform[a1, o, osposg.states[sp].belief_index] >= sum(get(osposg.transition_map, (s, a1, a2, o, sp), 0.0) * policy2[s, a2]
+        belieftransform[a1, o, osposg.states[sp].belief_index] == sum(get(osposg.transition_map, (s, a1, a2, o, sp), 0.0) * policy2[s, a2]
                                                                for s in partition.states for a2 in osposg.states[s].player2_actions))
 
     # 28e
@@ -106,8 +108,10 @@ function compute_UB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
         for (si, s) in enumerate(partition.states)
     ]
     policy2_conditional = map.(x -> isinf(x) | isnan(x) ? zero(x) : x, policy2_conditional)
+    policy2_conditional = [sum(state_policy) > 0.0 ? normalize(max.(state_policy, 0.0), 1) : state_policy for state_policy in policy2_conditional]
 
     policy1 = dual.(model[:con28b]).data
+    policy1 = normalize(max.(policy1, 0.0), 1)
 
     return policy1, policy2_conditional, value(model[:gamevalue])
 end

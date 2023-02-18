@@ -5,7 +5,7 @@ using GLPK
 using JuMP
 using Parameters
 
-using LinearAlgebra: dot
+using LinearAlgebra: dot, normalize
 using Logging
 using Printf
 

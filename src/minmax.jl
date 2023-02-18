@@ -1,3 +1,8 @@
+"""
+    compute_LB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64})
+
+Solve LB stage game using linear program primal formulation and return policies of both players along with values of individual states.
+"""
 function compute_LB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64})
     # The comment labels of variables, constraints and objective correspond to the equation labels in https://doi.org/10.1016/j.artint.2022.103838
     model = Model(hsvi.optimizer_factory)
@@ -49,6 +54,11 @@ function compute_LB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
     return policy1, policy2_conditional, value.(model[:statevalue]).data
 end
 
+"""
+    compute_UB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64})
+
+Solve UB stage game using linear program dual formulation and return policies of both players along with value of the game.
+"""
 function compute_UB(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64})
     # The comment labels of variables, constraints and objective correspond to the equation labels in https://doi.org/10.1016/j.artint.2022.103838
     model = Model(hsvi.optimizer_factory)

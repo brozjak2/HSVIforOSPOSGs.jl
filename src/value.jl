@@ -1,6 +1,18 @@
+"""
+    LB_value(osposg::OSPOSG, hsvi::HSVI)
+    LB_value(::OSPOSG, ::HSVI, partition::Partition, belief::Vector{Float64})
+
+Compute LB value in initial partition and belief of `osposg` or in specified `partition` and `belief` using dot products of α-vectors with given belief.
+"""
 LB_value(osposg::OSPOSG, hsvi::HSVI) = LB_value(osposg, hsvi, osposg.partitions[osposg.initial_partition], osposg.initial_belief)
 LB_value(::OSPOSG, ::HSVI, partition::Partition, belief::Vector{Float64}) = maximum(dot(alpha, belief) for alpha in partition.gamma)
 
+"""
+    UB_value(osposg::OSPOSG, hsvi::HSVI)
+    UB_value(::OSPOSG, ::HSVI, partition::Partition, belief::Vector{Float64})
+
+Compute UB value in initial partition and belief of `osposg` or in specified `partition` and `belief` using convex hull linear program.
+"""
 UB_value(osposg::OSPOSG, hsvi::HSVI) = UB_value(osposg, hsvi, osposg.partitions[osposg.initial_partition], osposg.initial_belief)
 function UB_value(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64})
     upsilon_size = length(partition.upsilon)

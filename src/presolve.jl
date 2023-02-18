@@ -1,3 +1,8 @@
+"""
+    presolve_LB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
+
+Presolve LB by computing value of the game for fixed uniform policies.
+"""
 function presolve_LB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
     clock_start = time()
     L = LB_min(osposg)
@@ -52,6 +57,11 @@ function presolve_LB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
     log_presolveLB(osposg, hsvi, delta, time() - clock_start, recorder)
 end
 
+"""
+    presolve_UB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
+
+Presolve UB by value iteration of the perfect information variant of the game, which can be solved by linear program.
+"""
 function presolve_UB(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder)
     clock_start = time()
     U = UB_max(osposg)

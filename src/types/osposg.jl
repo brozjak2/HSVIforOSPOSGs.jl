@@ -10,8 +10,8 @@ struct OSPOSG
     states::Vector{State}
     partitions::Vector{Partition}
 
-    transition_map::Dict{Tuple{Int,Int,Int,Int,Int},Float64}
-    reward_map::Dict{Tuple{Int,Int,Int},Float64}
+    transition_map::Dict{Tuple{Int,Int,Int,Int,Int},Float64} # (s, a1, a2) -> (o, sp, prob)[]
+    reward_map::Dict{Tuple{Int,Int,Int},Float64} # (s, a1, a2) -> r[]
 
     initial_partition::Int
     initial_belief::Vector{Float64}
@@ -73,11 +73,15 @@ Construct `OSPOSG` from `.osposg` file at `path` or from IO `io`.
 """
 function OSPOSG(path::AbstractString)
     return open(path, "r") do file
+        @debug "Loading OSPOSG from $path"
         OSPOSG(file)
     end
 end
 
 function OSPOSG(io::IO)
+    # Because Julia indexes from 1, 1 is added to all parsed indexes
+
+    # Parse game description
     description = split(readline(io), ' ')
     state_count, partition_count, player1_action_count, player2_action_count, observation_count, transition_count, reward_count = map(x -> parse(Int, x), description[1:7])
     discount = parse(Float64, description[8])
@@ -86,6 +90,7 @@ function OSPOSG(io::IO)
         throw(ArgumentError("Discount $(discount) is outside of (0, 1)."))
     end
 
+    # Parse states
     state_labels = Vector{String}(undef, state_count)
     states = Vector{State}(undef, state_count)
     partitions = [Partition(p) for p in 1:partition_count]
@@ -98,10 +103,12 @@ function OSPOSG(io::IO)
         push!(partitions[p].states, s)
     end
 
+    # Parse labels
     player1_action_labels = [readline(io) for _ in 1:player1_action_count]
     player2_action_labels = [readline(io) for _ in 1:player2_action_count]
     observation_labels = [readline(io) for _ in 1:observation_count]
 
+    # Parse actions
     for s in 1:state_count
         append!(states[s].player2_actions, [parse(Int, x) + 1 for x in split(readline(io), ' ')])
         for (i, a2) in enumerate(states[s].player2_actions)
@@ -115,6 +122,7 @@ function OSPOSG(io::IO)
         end
     end
 
+    # Parse transitions
     transition_map = Dict{Tuple{Int,Int,Int,Int,Int},Float64}()
     for _ in 1:transition_count
         transition = split(readline(io), ' ')
@@ -129,6 +137,7 @@ function OSPOSG(io::IO)
             throw(MultiPartitionTransitionException())
         end
 
+        # Create specialized mappings to improve performance
         push!(get!(partitions[p].observations, a1, Int[]), o)
         push!(get!(partitions[p].transitions, (s, a1, a2), Tuple{Int,Int,Float64}[]), (o, sp, prob))
         push!(get!(partitions[p].a1o_transitions, (a1, o), Tuple{Int,Int,Int,Float64}[]), (s, a2, sp, prob))
@@ -140,6 +149,7 @@ function OSPOSG(io::IO)
         unique!.(values(partitions[p].observations))
     end
 
+    # Parse rewards
     reward_map = Dict{Tuple{Int,Int,Int},Float64}()
     for _ in 1:reward_count
         reward = split(readline(io), ' ')
@@ -156,6 +166,7 @@ function OSPOSG(io::IO)
         throw(IsNotDistributionException("initial_belief", initial_belief))
     end
 
+    # Precompute minimal and maximal reward for faster queries
     minimal_reward = minimum(values(reward_map))
     maximal_reward = maximum(values(reward_map))
 
@@ -184,11 +195,14 @@ Writes game `osposg` in the `.osposg` format to `path` or to IO 'io'.
 """
 function save(path::AbstractString, osposg::OSPOSG)
     return open(path, "w") do file
+        @debug "Saving OSPOSG to $path"
         save(file, osposg)
     end
 end
 
 function save(io::IO, osposg::OSPOSG)
+    # Because Julia indexes from 1, substract 1 from all indexes before writting them
+
     println(io, "$(length(osposg.states)) $(length(osposg.partitions)) $(length(osposg.player1_action_labels)) $(length(osposg.player2_action_labels)) $(length(osposg.observation_labels)) $(length(osposg.transition_map)) $(length(osposg.reward_map)) $(osposg.discount)")
 
     for (state, label) in zip(osposg.states, osposg.state_labels)

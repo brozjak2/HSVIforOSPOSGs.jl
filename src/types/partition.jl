@@ -17,15 +17,15 @@ Fields:
 - `upsilon::Vector{Tuple{Vector{Float64},Float64}}` - vector of belief-value pairs representing the upper bound UB
 """
 struct Partition
-    index::Int
+    index::Int # `p` usually refers to current partition index, `tp` is being used for target partition
     states::Vector{Int}
-    player1_actions::Vector{Int}
-    policy_index::Dict{Int,Int}
+    player1_actions::Vector{Int} # `a1` usually refers to global player1 action index
+    policy_index::Dict{Int,Int} # `a1i` usually refers to in-policy player1 action index
 
-    target::Dict{Tuple{Int,Int},Int}
-    observations::Dict{Int,Vector{Int}}
-    transitions::Dict{Tuple{Int,Int,Int},Vector{Tuple{Int,Int,Float64}}}
-    a1o_transitions::Dict{Tuple{Int,Int},Vector{Tuple{Int,Int,Int,Float64}}}
+    target::Dict{Tuple{Int,Int},Int} # (a1, o) -> tp
+    observations::Dict{Int,Vector{Int}} # (a1) -> o[]
+    transitions::Dict{Tuple{Int,Int,Int},Vector{Tuple{Int,Int,Float64}}} # (s, a1, a2) -> (o, sp, prob)[]
+    a1o_transitions::Dict{Tuple{Int,Int},Vector{Tuple{Int,Int,Int,Float64}}} # (a1, o) -> (s, a2, sp, prob)[]
 
     gamma::Vector{Vector{Float64}}
     upsilon::Vector{Tuple{Vector{Float64},Float64}}

@@ -12,11 +12,11 @@ Fields:
 - `policy_index::Dict{Int,Int}` - mapping from player2 action index to in-policy index
 """
 struct State
-    index::Int
+    index::Int # `s` usually refers to current state index, `sp` is being used for next state
     partition::Int
     belief_index::Int
-    player2_actions::Vector{Int}
-    policy_index::Dict{Int,Int}
+    player2_actions::Vector{Int} # `a2` usually refers to global player2 action index
+    policy_index::Dict{Int,Int} # `a2i` usually refers to in-policy player2 action index
 
     State(index::Int, partition::Int, belief_index::Int) = new(
         index,

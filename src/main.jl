@@ -13,10 +13,12 @@ function solve(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64, time_limit::Float64
     presolve_LB(osposg, hsvi, recorder)
     presolve_UB(osposg, hsvi, recorder)
 
-    update_recorder(osposg, hsvi, recorder)
-    push!(recorder.exploration_depths, 0)
+    update_recorder(osposg, hsvi, recorder) # Commit bounds from presolve phase to recorder
+    push!(recorder.exploration_depths, 0) # For record alignment
+
     log_start(osposg, hsvi, recorder)
 
+    # Main loop
     while excess(osposg, hsvi, osposg.partitions[osposg.initial_partition], osposg.initial_belief, epsilon) > 0.0
         explore(osposg, hsvi, recorder, osposg.partitions[osposg.initial_partition], osposg.initial_belief, epsilon, 0)
 
@@ -35,21 +37,28 @@ function solve(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64, time_limit::Float64
 end
 
 function explore(osposg::OSPOSG, hsvi::HSVI, recorder::Recorder, partition::Partition, belief::Vector{Float64}, rho::Float64, depth::Int)
+    # Solve stage game on the way down
     _, LB_player2_policy, alpha = compute_LB(osposg, hsvi, partition, belief)
-    UB_player1_policy, _ , y = compute_UB(osposg, hsvi, partition, belief)
+    UB_player1_policy, _, y = compute_UB(osposg, hsvi, partition, belief)
 
+    # Update bounds on the way down
     point_based_update(partition, belief, alpha, y)
 
+    # Select exploration pair (a1, o) by heuristic
     weighted_excess_gap, target_partition, target_belief = select_a1o(osposg, hsvi, partition, belief, UB_player1_policy, LB_player2_policy, rho)
 
     if weighted_excess_gap > 0
+        # Recurse deeper if termination condition has not yet been met
         explore(osposg, hsvi, recorder, target_partition, target_belief, next_rho(osposg, hsvi, rho), depth + 1)
 
+        # Solve stage game on the way up
         _, _, alpha = compute_LB(osposg, hsvi, partition, belief)
-        _, _ , y = compute_UB(osposg, hsvi, partition, belief)
+        _, _, y = compute_UB(osposg, hsvi, partition, belief)
 
+        # Update bounds on the way up
         point_based_update(partition, belief, alpha, y)
     else
+        # Record reached depth before backtracking
         push!(recorder.exploration_depths, depth)
     end
 end
@@ -59,10 +68,12 @@ function select_a1o(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
     max_target_partition = nothing
     max_target_belief = nothing
 
+    # Traverse all possible (a1, o) pairs
     for a1 in partition.player1_actions, o in partition.observations[a1]
         target_partition = osposg.partitions[partition.target[a1, o]]
         target_belief = zeros(length(target_partition.states))
 
+        # Compute (a1, o) pair probability and belief in target_partition
         a1o_prob = 0.0
         for (s, a2, sp, prob) in partition.a1o_transitions[a1, o]
             a1i = partition.policy_index[a1]
@@ -78,10 +89,12 @@ function select_a1o(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Ve
         end
 
         if a1o_prob != 0.0
+            # If (a1, o) pair is possible under computed policies, compute its excess gap weighted by probability
             target_belief = (1.0 / a1o_prob) .* target_belief
             excess_gap = excess(osposg, hsvi, target_partition, target_belief, next_rho(osposg, hsvi, rho))
             weighted_excess_gap = a1o_prob * excess_gap
 
+            # Look for largest weighted excess gap
             if weighted_excess_gap > max_weighted_excess_gap
                 max_weighted_excess_gap = weighted_excess_gap
                 max_target_partition = target_partition

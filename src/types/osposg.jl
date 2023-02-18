@@ -61,7 +61,7 @@ UB_max(osposg::OSPOSG) = osposg.maximal_reward / (1.0 - osposg.discount)
 """
     lipschitz_delta(osposg::OSPOSG)
 
-Returns the Lipschitz delta of the game.
+Computes the Lipschitz delta of the game.
 """
 lipschitz_delta(osposg::OSPOSG) = (UB_max(osposg) - LB_min(osposg)) / 2.0
 

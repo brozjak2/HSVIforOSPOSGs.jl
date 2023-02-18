@@ -1,7 +1,7 @@
 """
     solve(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64, time_limit::Float64)
 
-Run `hsvi` solver on `osposg` with time limit `time_limit` aiming for gap of at most `epsilon` in initial belief.
+Run `hsvi` solver on `osposg` game with time limit `time_limit` aiming for gap of at most `epsilon` in initial belief.
 """
 function solve(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64, time_limit::Float64)
     check_neighborhood(osposg, hsvi, epsilon)
@@ -104,6 +104,11 @@ excess(osposg::OSPOSG, hsvi::HSVI, partition::Partition, belief::Vector{Float64}
 next_rho(osposg::OSPOSG, hsvi::HSVI, rho::Float64) =
     (rho - 2.0 * lipschitz_delta(osposg) * hsvi.neighborhood) / osposg.discount
 
+"""
+    check_neighborhood(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64)
+
+Checks that the `hsvi.neighborhood` parameter is within bounds for `osposg` game and gap `epsilon`.
+"""
 function check_neighborhood(osposg::OSPOSG, hsvi::HSVI, epsilon::Float64)
     upper_limit = (1.0 - osposg.discount) * epsilon / (2.0 * lipschitz_delta(osposg))
     if !(0.0 < hsvi.neighborhood < upper_limit)

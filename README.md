@@ -33,6 +33,7 @@ The following plot was created by [`scripts/plot_example.jl`](scripts/plot_examp
 
 ![Converge plot](assets/convergence.png)
 
+For more in-depth introduction see the [documentation](https://brozjak2.github.io/HSVIforOSPOSGs.jl/dev/).
 Additional examples on how to configure and run the algorithm are provided in the [`scripts`](scripts) directory.
 
 ## LP Solvers

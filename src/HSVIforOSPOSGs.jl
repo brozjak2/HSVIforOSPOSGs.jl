@@ -1,6 +1,5 @@
 module HSVIforOSPOSGs
 
-# using Distributions
 using GLPK
 using JuMP
 using Parameters

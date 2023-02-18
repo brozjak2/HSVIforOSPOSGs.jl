@@ -6,7 +6,7 @@ using Parameters
 
 using LinearAlgebra: dot, normalize
 using Logging
-using Printf
+using Printf: @sprintf
 
 export OSPOSG, HSVI, solve, save
 

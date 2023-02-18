@@ -1,8 +1,12 @@
 using HSVIforOSPOSGs
 using Test
 using Logging
+using Printf: @sprintf
 
 osposg = OSPOSG("../games/pursuit-evasion/peg03.osposg")
+hsvi = HSVI()
+epsilon = 1.0
+time_limit = 60.0
 
 @testset "HSVIforOSPOSGs.jl" begin
     @testset "load" begin
@@ -43,7 +47,6 @@ osposg = OSPOSG("../games/pursuit-evasion/peg03.osposg")
 
     @testset "save" begin
         io = IOBuffer()
-
         save(io, osposg)
         seekstart(io)
         osposg_saved = OSPOSG(io)
@@ -77,13 +80,27 @@ osposg = OSPOSG("../games/pursuit-evasion/peg03.osposg")
         @test osposg_saved.maximal_reward == 100.0
     end
 
+    @testset "logs" begin
+        neighborhood = 0.1
+        hsvi_neigborhood = HSVI(neighborhood=neighborhood)
+
+        upper_limit = (1.0 - osposg.discount) * epsilon / (2.0 * HSVIforOSPOSGs.lipschitz_delta(osposg))
+        msg = @sprintf(
+            "neighborhood parameter = %.4e is outside bounds (%.4e, %.4e)",
+            hsvi_neigborhood.neighborhood, 0.0, upper_limit
+        )
+        @test_logs (:warn, msg) min_level = Logging.Warn HSVIforOSPOSGs.check_neighborhood(osposg, hsvi_neigborhood, epsilon)
+
+        logs_time_limit = 1.0
+        hsvi_time_limit = HSVI(presolve_time_limit=logs_time_limit)
+
+        msg = @sprintf("reached time limit of %8.3fs and did not converge, killed", logs_time_limit)
+        @test_logs (:warn, msg) min_level = Logging.Warn solve(deepcopy(osposg), hsvi_time_limit, epsilon, logs_time_limit)
+    end
+
     @testset "solve" begin
         with_logger(ConsoleLogger(stdout, Logging.Error)) do
             osposg_solve = deepcopy(osposg)
-            hsvi = HSVI()
-            epsilon = 1.0
-            time_limit = 60.0
-
             recorder = solve(osposg_solve, hsvi, epsilon, time_limit)
 
             @test HSVIforOSPOSGs.width(osposg_solve, hsvi) < epsilon

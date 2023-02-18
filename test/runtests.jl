@@ -98,6 +98,14 @@ time_limit = 60.0
         @test_logs (:warn, msg) min_level = Logging.Warn solve(deepcopy(osposg), hsvi_time_limit, epsilon, logs_time_limit)
     end
 
+    @testset "OSPOSG" begin
+        reward_osposg = OSPOSG("games/rewards.osposg")
+
+        @test HSVIforOSPOSGs.LB_min(reward_osposg) ≈ 0.0
+        @test HSVIforOSPOSGs.UB_max(reward_osposg) ≈ 20.0
+        @test HSVIforOSPOSGs.lipschitz_delta(reward_osposg) ≈ 10.0
+    end
+
     @testset "solve" begin
         with_logger(ConsoleLogger(stdout, Logging.Error)) do
             osposg_solve = deepcopy(osposg)

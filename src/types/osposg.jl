@@ -82,6 +82,10 @@ function OSPOSG(io::IO)
     state_count, partition_count, player1_action_count, player2_action_count, observation_count, transition_count, reward_count = map(x -> parse(Int, x), description[1:7])
     discount = parse(Float64, description[8])
 
+    if !(0.0 < discount < 1.0)
+        throw(ArgumentError("Discount $(discount) is outside of (0, 1)."))
+    end
+
     state_labels = Vector{String}(undef, state_count)
     states = Vector{State}(undef, state_count)
     partitions = [Partition(p) for p in 1:partition_count]
@@ -147,6 +151,10 @@ function OSPOSG(io::IO)
 
     initial_partition = parse(Int, readuntil(io, ' ')) + 1
     initial_belief = [parse(Float64, x) for x in split(readline(io), ' ')]
+
+    if !isapprox(sum(initial_belief), 1.0)
+        throw(IsNotDistributionException("initial_belief", initial_belief))
+    end
 
     minimal_reward = minimum(values(reward_map))
     maximal_reward = maximum(values(reward_map))
